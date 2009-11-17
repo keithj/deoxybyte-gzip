@@ -1,8 +1,8 @@
 Introduction
 
 I needed a small set of zlib functions and the currently available
-pure Common Lisp that I know of are incomplete (with respect to
-reading ans writing) or too slow.
+pure Common Lisp ones that I know of are incomplete (with respect to
+reading and writing) or too slow.
 
 In time I will build a Gray-streams implementation on top of this
 low-level code.
