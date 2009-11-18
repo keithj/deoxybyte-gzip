@@ -47,6 +47,9 @@
 
 (defconstant +z-null+ 0)
 
+(defcvar ("errno" *c-error-number*) :int
+  "Number of last error.")
+
 (defcfun ("gzerror" gzerror) :string
   (gz :pointer)
   (errnum :pointer))

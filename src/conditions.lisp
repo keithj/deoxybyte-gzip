@@ -1,7 +1,7 @@
 ;;;
-;;; Copyright (C) 2007-2009 Keith James. All rights reserved.
+;;; Copyright (C) 2009 Keith James. All rights reserved.
 ;;;
-;;; This file is part of cl-gzip.
+;;; This file is part of deoxybyte-gzip.
 ;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 (in-package :uk.co.deoxybyte-gzip)
 
-(define-condition zlib-io-error (io-error)
+(define-condition gz-io-error (io-error)
   ((text :initform nil
          :initarg :text
          :reader text-of
@@ -29,7 +29,6 @@
           :reader errno-of
           :documentation "The C error number."))
   (:report (lambda (condition stream)
-             (format stream "Zlib error~@[: ~a~]."
+             (format stream "gz error~@[: ~a~]."
                      (text-of condition))))
-  (:documentation "A condition raised when an error occurs reading
-  from or writing to a gzipped stream."))
+  (:documentation "A condition raised when an gzip error occurs."))

@@ -45,12 +45,15 @@
    #:gzgetc
    #:gzputc
    #:gzgets
-   #:gzputs))
+   #:gzputs
+
+   #:*c-error-number*))
 
 (defpackage :uk.co.deoxybyte-gzip
-  (:use #:common-lisp #:cffi #:zlib-ffi #:deoxybyte-io)
+  (:use #:common-lisp #:cffi #:zlib-ffi)
   (:nicknames #:gz)
   (:import-from #:deoxybyte-utilities #:concat-strings #:txt)
+  (:import-from #:deoxybyte-io #:io-error #:pathstring)
   (:export
    ;; Constants
 
@@ -59,6 +62,9 @@
 
    ;; Classes
    #:gz
+
+   ;; Macros
+   #:with-gz-file
 
    ;; Functions
    #:gz-open
@@ -69,4 +75,9 @@
    #:gz-read-string
    #:gz-write-string
    #:gz-read-byte
-   #:gz-write-byte))
+   #:gz-write-byte
+
+   #:gzip-pathname
+   #:gunzip-pathname
+   #:gzip
+   #:gunzip))

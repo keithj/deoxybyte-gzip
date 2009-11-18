@@ -7,26 +7,22 @@ reading and writing) or too slow.
 In time I will build a Gray-streams implementation on top of this
 low-level code.
 
-Performance decompressing a 1.4Gb text file, compared to gunzip:
+Measuring execution times shows deozybyte-gzip to be fractionally
+slower than gzip/gunzip, but not significantly so.
 
-(time (gunzip "test.fasta.gz" "out.fasta"))
-Evaluation took:
-  29.672 seconds of real time
-  28.261766 seconds of total run time (25.101568 user, 3.160198 system)
-  95.25% CPU
-  71,021,005,209 processor cycles
-  3,134,368 bytes consed
+Relative execution time:
 
-time gunzip -c test.fasta.gz > out.fasta
-real    0m29.027s
-user    0m9.325s
-sys     0m2.992s
+                  gzip   deozybyte-gzip
+  Compression      1.0             1.05
+Decompression      1.0             1.03
 
+Timings were taken compressing and decompressing a 1.4 Gb text file
+using GNU gzip/gunzip command line programs and the gz:gzip/gz:gunzip
+functions (which use an internal buffer of length 2^16 -1).
 
-No particular optimization has been done yet. This code has only been
-tested on the REPL. This system is named with a deoxybyte- prefix
-because there are several existing Common Lisp packages using the gzip
-name and I don't want to clash with them.
+This code has only been tested on the REPL. This system is named with
+a deoxybyte- prefix because there are several existing Common Lisp
+packages using the gzip name and I don't want to clash with them.
 
 
 Installation
@@ -68,7 +64,7 @@ at the REPL, provided that CLDOC is installed.
 Dependencies
 
 deoxybyte-systems       git://github.com/keithj/deoxybyte-systems.git
-deoxybyte-unix          git://github.com/keithj/deoxybyte-unix.git
+deoxybyte-io            git://github.com/keithj/deoxybyte-io.git
 
 
 Optional dependencies
