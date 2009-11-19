@@ -38,6 +38,8 @@
    #:gzopen
    #:gzclose
    #:gzdopen
+   #:gztell
+   #:gzseek
    #:gzeof
    #:gzflush
    #:gzread
@@ -47,13 +49,13 @@
    #:gzgets
    #:gzputs
 
-   #:*c-error-number*))
+   #:*c-error-number*
+   #:seek-directive))
 
 (defpackage :uk.co.deoxybyte-gzip
-  (:use #:common-lisp #:cffi #:zlib-ffi)
+  (:use #:common-lisp #:cffi #:zlib-ffi #:deoxybyte-io)
   (:nicknames #:gz)
   (:import-from #:deoxybyte-utilities #:concat-strings #:txt)
-  (:import-from #:deoxybyte-io #:io-error #:pathstring)
   (:export
    ;; Constants
 

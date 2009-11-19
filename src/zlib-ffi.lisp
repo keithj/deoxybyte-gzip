@@ -47,6 +47,14 @@
 
 (defconstant +z-null+ 0)
 
+(defctype off-t #-x86-64 :uint32
+                #+x86-64 :uint64
+  "Offset type.")
+
+(defcenum seek-directive 
+  :seek-set
+  :seek-cur)
+
 (defcvar ("errno" *c-error-number*) :int
   "Number of last error.")
 
@@ -61,6 +69,14 @@
 (defcfun ("gzdopen" gzdopen) :pointer
   (fd :int)
   (mode :string))
+
+(defcfun ("gztell" gztell) off-t
+  (gz :pointer))
+
+(defcfun ("gzseek" gzseek) off-t
+  (gz :pointer)
+  (offset off-t)
+  (whence seek-directive))
 
 (defcfun ("gzeof" gzeof) :boolean
   (gz :pointer))
@@ -97,5 +113,3 @@
 (defcfun ("gzputc" gzputc) :int
   (gz :pointer)
   (char :uint))
-
-

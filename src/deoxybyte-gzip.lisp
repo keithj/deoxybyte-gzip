@@ -78,9 +78,9 @@ Key:
                                             (:output #\w)) compression))
                      :open-p t)))
     (if (null-pointer-p (gz-ptr gz))
-        (error 'zlib-io-error :errno *c-error-number*
+        (error 'gz-io-error :errno *c-error-number*
                :text (format nil "failed to open ~a (~a)"
-                             filespec (zlib-error-message gz)))
+                             filespec (gz-error-message gz)))
       gz)))
 
 (defun gz-close (gz)
@@ -88,19 +88,25 @@ Key:
   (when (gz-open-p gz)
     (setf (gz-open-p gz) nil)
     (or (= +z-ok+ (gzclose (gz-ptr gz)))
-        (error 'zlib-io-error :errno *c-error-number*
+        (error 'gz-io-error :errno *c-error-number*
                :text (format nil "failed to close cleanly (~a)"
-                             (zlib-error-message gz))))))
+                             (gz-error-message gz))))))
 
 (defun gz-eof-p (gz)
   "Returns T if GZ has reached EOF, or NIL otherwise."
   (gzeof (gz-ptr gz)))
 
+(defun gz-tell (gz)
+  (gztell (gz-ptr gz)))
+
+(defun gz-seek (gz offset)
+  (gzseek (gz-ptr gz) offset :seek-set))
+
 (defun gz-read (gz buffer n)
   "Reads up to N bytes from GZ into octet vector BUFFER. Returns the
 number of bytes read, which may be 0."
   (cond ((not (gz-open-p gz))
-         (error 'zlib-io-error :text "attempted to read from a closed stream"))
+         (error 'gz-io-error :text "attempted to read from a closed stream"))
         ((gz-eof-p gz)
          0)
         (t
@@ -109,8 +115,8 @@ number of bytes read, which may be 0."
              (cond ((zerop x)
                     0)
                    ((= -1 x)
-                    (error 'zlib-io-error :errno *c-error-number*
-                           :text (zlib-error-message gz)))
+                    (error 'gz-io-error :errno *c-error-number*
+                           :text (gz-error-message gz)))
                    (t
                     (loop
                        for i from 0 below x
@@ -126,66 +132,66 @@ unsigned-byte 8."
   (declare (type (simple-array (unsigned-byte 8) (*)) buffer)
            (type fixnum n))
   (unless (gz-open-p gz)
-    (error 'zlib-io-error :text "attempted to write to a closed stream"))
+    (error 'gz-io-error :text "attempted to write to a closed stream"))
   (with-foreign-pointer (buf (length buffer))
     (loop
        for i from 0 below n
        do (setf (mem-aref buf :char i) (aref buffer i)))
     (let ((x (the fixnum (gzwrite (gz-ptr gz) buf n))))
       (if (zerop x)
-          (error 'zlib-io-error :errno *c-error-number*
-                 :text (zlib-error-message gz))
+          (error 'gz-io-error :errno *c-error-number*
+                 :text (gz-error-message gz))
         x))))
 
 (defun gz-read-string (gz str n)
   "Reads up to N characters from GZ into string STR. Returns the
 number of characters read, which may be 0."
   (cond ((not (gz-open-p gz))
-         (error 'zlib-io-error :text "attempted to read from a closed stream"))
+         (error 'gz-io-error :text "attempted to read from a closed stream"))
         ((gz-eof-p gz)
          0)
         (t
          (let ((x (gzgets (gz-ptr gz) str (1+ n))))
            (if (= -1 x)
-               (error 'zlib-io-error :errno *c-error-number*
-                      :text (zlib-error-message gz))
+               (error 'gz-io-error :errno *c-error-number*
+                      :text (gz-error-message gz))
              x)))))
 
 (defun gz-write-string (gz buffer)
   "Writes up to N characters in octet vector BUFFER to GZ. Returns the
 number of characters written."
   (unless (gz-open-p gz)
-    (error 'zlib-io-error :text "attempted to write to a closed stream"))
+    (error 'gz-io-error :text "attempted to write to a closed stream"))
   (let ((n (gzputs (gz-ptr gz) buffer)))
     (if (= -1 n)
-        (error 'zlib-io-error :errno *c-error-number*
-               :text (zlib-error-message gz))
+        (error 'gz-io-error :errno *c-error-number*
+               :text (gz-error-message gz))
       n)))
 
 (defun gz-read-byte (gz)
   "Returns a byte read from GZ, or :eof ."
   (cond ((not (gz-open-p gz))
-         (error 'zlib-io-error :text "attempted to read from a closed stream"))
+         (error 'gz-io-error :text "attempted to read from a closed stream"))
         ((gz-eof-p gz)
          :eof)
         (t
          (let ((b (gzgetc (gz-ptr gz))))
            (if (= -1 b)
-               (error 'zlib-io-error :errno *c-error-number*
-                      :text (zlib-error-message gz))
+               (error 'gz-io-error :errno *c-error-number*
+                      :text (gz-error-message gz))
              b)))))
 
 (defun gz-write-byte (gz byte)
   "Writes BYTE to GZ and returns BYTE."
   (unless (gz-open-p gz)
-    (error 'zlib-io-error :text "attempted to write to a closed stream"))
+    (error 'gz-io-error :text "attempted to write to a closed stream"))
   (let ((b (gzputc (gz-ptr gz) byte)))
     (if (= -1 b)
-        (error 'zlib-io-error :errno *c-error-number*
-               :text (zlib-error-message gz))
+        (error 'gz-io-error :errno *c-error-number*
+               :text (gz-error-message gz))
       b)))
 
-(defun zlib-error-message (gz)
+(defun gz-error-message (gz)
   "Returns a zlib error message string relevant to GZ."
   (let ((msg (with-foreign-pointer (ptr (foreign-type-size :int))
                (gzerror (gz-ptr gz) ptr))))
