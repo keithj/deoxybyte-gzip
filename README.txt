@@ -1,14 +1,11 @@
 Introduction
 
-I needed a small set of zlib functions and the currently available
-pure Common Lisp ones that I know of are incomplete (with respect to
-reading and writing) or too slow.
+This system provides a gzip and gunzip functions and a Gray-streams
+implementation built on a set of lower-level zlib functions.
 
-In time I will build a Gray-streams implementation on top of this
-low-level code.
-
-Measuring execution times shows deozybyte-gzip to be fractionally
-slower than gzip/gunzip, but not significantly so.
+Measuring execution times of the gz:gzip and gz:gunzip functions shows
+deozybyte-gzip to be fractionally slower than GNU gzip/gunzip, but not
+significantly so.
 
 Relative execution time:
 
@@ -20,9 +17,13 @@ Timings were taken compressing and decompressing a 1.4 Gb text file
 using GNU gzip/gunzip command line programs and the gz:gzip/gz:gunzip
 functions (which use an internal buffer of length 2^16 -1).
 
-This code has only been tested on the REPL. This system is named with
-a deoxybyte- prefix because there are several existing Common Lisp
-packages using the gzip name and I don't want to clash with them.
+The Gray-streams implementation is currently considerably slower
+because it does not yet contain any optimized code for efficient
+sequence types.
+
+This system is named with a deoxybyte- prefix because there are
+several existing Common Lisp packages using the gzip name and I don't
+want to clash with them.
 
 
 Installation

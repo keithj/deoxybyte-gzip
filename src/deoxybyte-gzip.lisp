@@ -102,6 +102,9 @@ Key:
 (defun gz-seek (gz offset)
   (gzseek (gz-ptr gz) offset :seek-set))
 
+(defun gz-flush (gz flush-mode)
+  (gzflush (gz-ptr gz) flush-mode))
+
 (defun gz-read (gz buffer n)
   "Reads up to N bytes from GZ into octet vector BUFFER. Returns the
 number of bytes read, which may be 0."

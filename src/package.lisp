@@ -30,10 +30,7 @@
    #:+z-mem-error+
    #:+z-buf-error+
    #:+z-version-error+
-   #:+z-no-flush+
-   #:+z-sync-flush+
-   #:+z-full-flush+
-   #:+z-finish+
+
    #:gzerror
    #:gzopen
    #:gzclose
@@ -49,24 +46,27 @@
    #:gzgets
    #:gzputs
 
-   #:*c-error-number*
-   #:seek-directive))
+   #:*c-error-number*))
 
 (defpackage :uk.co.deoxybyte-gzip
   (:use #:common-lisp #:cffi #:zlib-ffi #:deoxybyte-io)
-  (:nicknames #:gz)
+  (:nicknames #:deoxybyte-gzip #:gz)
   (:import-from #:deoxybyte-utilities #:concat-strings #:txt)
   (:export
    ;; Constants
 
    ;; Conditions
-   #:zlib-io-error
+   #:gz-io-error
+
+   ;; Macros
+   #:with-gz-file
 
    ;; Classes
    #:gz
 
-   ;; Macros
-   #:with-gz-file
+   #:gzip-stream
+   #:gzip-input-stream
+   #:gzip-output-stream
 
    ;; Functions
    #:gz-open
@@ -82,4 +82,6 @@
    #:gzip-pathname
    #:gunzip-pathname
    #:gzip
-   #:gunzip))
+   #:gunzip
+
+   #:make-gzip-stream))
