@@ -4,7 +4,7 @@ This system provides gzip and gunzip functions and a Gray-streams
 implementation, both built on a set of lower-level zlib functions.
 
 Measuring execution times of the gz:gzip and gz:gunzip functions shows
-deozybyte-gzip to be fractionally slower than GNU gzip/gunzip, but not
+deoxybyte-gzip to be fractionally slower than GNU gzip/gunzip, but not
 significantly so.
 
 Relative execution time:

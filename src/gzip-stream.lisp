@@ -92,33 +92,6 @@ stream."))
                (setf buffer-offset 0
                      num-buffered (gz-read gz buffer
                                            (min n +byte-buffer-size+)))
-               (the byte-buffer-index num-buffered))
-             (buffer-empty-p ()
-               (= buffer-offset num-buffered)))
-        (let* ((m (- end start))
-               (n m))
-          (if (zerop (fill-buffer n))
-              0
-            (loop
-               for i from start below end
-               do (cond ((and (buffer-empty-p) (zerop (fill-buffer n)))
-                         (return (- m n)))
-                        (t
-                         (setf (elt seq i) (aref buffer buffer-offset))
-                         (incf buffer-offset)
-                         (decf n)))
-               finally (return (- m n)))))))))
-
-
-(defmethod stream-read-sequence ((stream gzip-input-stream) (seq sequence)
-                                 &optional (start 0) end)
-  (let ((end (or end (length seq))))
-    (with-slots (gz buffer buffer-offset num-buffered)
-        stream
-      (flet ((fill-buffer (n)
-               (setf buffer-offset 0
-                     num-buffered (gz-read gz buffer
-                                           (min n +byte-buffer-size+)))
                num-buffered)
              (buffer-empty-p ()
                (= buffer-offset num-buffered)))
