@@ -1,6 +1,6 @@
 Introduction
 
-This system provides a gzip and gunzip functions and a Gray-streams
+This system provides gzip and gunzip functions and a Gray-streams
 implementation built on a set of lower-level zlib functions.
 
 Measuring execution times of the gz:gzip and gz:gunzip functions shows
