@@ -35,11 +35,6 @@
 (defconstant +z-buf-error+ -5)
 (defconstant +z-version-error+ -6)
 
-(defconstant +z-no-flush+ 0)
-(defconstant +z-sync-flush+ 2)
-(defconstant +z-full-flush+ 3)
-(defconstant +z-finish+ 4)
-
 (defconstant +z-no-compression+ 0)
 (defconstant +z-best-speed+ 1)
 (defconstant +z-best-compression+ 9)
@@ -54,6 +49,12 @@
 (defcenum seek-directive 
   :seek-set
   :seek-cur)
+
+(defcenum flush-mode
+  :no-flush
+  (:sync-flush 2)
+  :full-flush
+  :finish)
 
 (defcvar ("errno" *c-error-number*) :int
   "Number of last error.")
@@ -83,7 +84,7 @@
 
 (defcfun ("gzflush" gzflush) :int
   (gz :pointer)
-  (flush :int))
+  (flush flush-mode))
 
 (defcfun ("gzclose" gzclose) :int
   (gz :pointer))
