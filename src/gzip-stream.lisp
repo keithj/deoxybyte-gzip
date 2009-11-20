@@ -86,8 +86,6 @@ stream."))
 (defmethod stream-read-sequence ((stream gzip-input-stream) (seq sequence)
                                  &optional (start 0) end)
   (let ((end (or end (length seq))))
-    (declare (optimize (speed 3)))
-    (declare (type fixnum start end))
     (with-slots (gz buffer buffer-offset num-buffered)
         stream
       (flet ((fill-buffer (n)
