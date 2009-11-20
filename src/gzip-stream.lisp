@@ -97,7 +97,6 @@ stream."))
                (= buffer-offset num-buffered)))
         (let* ((m (- end start))
                (n m))
-          (declare (type fixnum m n))
           (if (zerop (fill-buffer n))
               0
             (loop
@@ -120,12 +119,11 @@ stream."))
                (setf buffer-offset 0
                      num-buffered (gz-read gz buffer
                                            (min n +byte-buffer-size+)))
-               (the byte-buffer-index num-buffered))
+               num-buffered)
              (buffer-empty-p ()
                (= buffer-offset num-buffered)))
         (let* ((m (- end start))
                (n m))
-          (declare (type fixnum m n))
           (if (zerop (fill-buffer n))
               0
             (loop
