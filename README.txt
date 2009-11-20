@@ -1,7 +1,7 @@
 Introduction
 
 This system provides gzip and gunzip functions and a Gray-streams
-implementation built on a set of lower-level zlib functions.
+implementation, both built on a set of lower-level zlib functions.
 
 Measuring execution times of the gz:gzip and gz:gunzip functions shows
 deozybyte-gzip to be fractionally slower than GNU gzip/gunzip, but not
@@ -18,8 +18,8 @@ using GNU gzip/gunzip command line programs and the gz:gzip/gz:gunzip
 functions (which use an internal buffer of length 2^16 -1).
 
 The Gray-streams implementation is currently considerably slower
-because it does not yet contain any optimized code for efficient
-sequence types.
+because it does not yet contain any optimized code for the more
+efficient sequence types (e.g. (simple-array (unsigned-byte 8))).
 
 This system is named with a deoxybyte- prefix because there are
 several existing Common Lisp packages using the gzip name and I don't
