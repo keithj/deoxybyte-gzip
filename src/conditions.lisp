@@ -29,6 +29,5 @@
           :reader errno-of
           :documentation "The C error number."))
   (:report (lambda (condition stream)
-             (format stream "gz error~@[: ~a~]."
-                     (text-of condition))))
+             (format stream "gz error~@[: ~a~]." (text-of condition))))
   (:documentation "A condition raised when an gzip error occurs."))

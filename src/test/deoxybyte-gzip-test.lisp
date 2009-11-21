@@ -1,7 +1,7 @@
 ;;;
 ;;; Copyright (C) 2009 Keith James. All rights reserved.
 ;;;
-;;; This file is part of deoxybyte-unix.
+;;; This file is part of deoxybyte-gzip.
 ;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by

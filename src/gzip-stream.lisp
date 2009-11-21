@@ -34,8 +34,6 @@
            :initform (make-array +byte-buffer-size+
                                  :element-type '(unsigned-byte 8)
                                  :initial-element (char-code #\.)))
-   (buffer-offset :initform 0)
-   (num-buffered :initform 0)
    (open-stream-p :initform t))
   (:documentation "A gzip stream capable of reading or writing
 compressed data."))
@@ -85,29 +83,51 @@ stream."))
 
 (defmethod stream-read-sequence ((stream gzip-input-stream) (seq sequence)
                                  &optional (start 0) end)
-  (let ((end (or end (length seq))))
-    (with-slots (gz buffer buffer-offset num-buffered)
-        stream
-      (flet ((fill-buffer (n)
-               (setf buffer-offset 0
-                     num-buffered (gz-read gz buffer
-                                           (min n +byte-buffer-size+)))
-               num-buffered)
-             (buffer-empty-p ()
-               (= buffer-offset num-buffered)))
-        (let* ((m (- end start))
-               (n m))
-          (if (zerop (fill-buffer n))
-              0
-            (loop
-               for i from start below end
-               do (cond ((and (buffer-empty-p) (zerop (fill-buffer n)))
-                         (return (- m n)))
-                        (t
-                         (setf (elt seq i) (aref buffer buffer-offset))
-                         (incf buffer-offset)
-                         (decf n)))
-               finally (return (- m n)))))))))
+  (macrolet ((define-copy-op (seq-type seq-accessor
+                                       &key (speed 1) (safety 2))
+               `(let ((seq-offset start))
+                  (declare (optimize (speed ,speed) (safety ,safety)))
+                  (declare (type (simple-array (unsigned-byte 8) (*)) buffer)
+                           (type ,seq-type seq))
+                  (loop
+                     while (plusp num-buffered)
+                     do (loop
+                           for i from 0 below num-buffered
+                           do (progn
+                                (setf (,seq-accessor seq seq-offset)
+                                      (aref buffer i))
+                                (incf seq-offset))
+                           finally (progn
+                                     (incf num-written num-buffered)
+                                     (decf num-to-write num-buffered)
+                                     (setf num-buffered
+                                           (gz-read gz buffer
+                                                    (min num-to-write
+                                                         +byte-buffer-size+)))))
+                     finally (return num-written)))))
+    (let ((end (or end (length seq))))
+      (with-slots (gz buffer)
+          stream
+        (let* ((num-to-write (- end start))
+               (num-buffered (gz-read gz buffer (min num-to-write
+                                                     +byte-buffer-size+)))
+               (num-written 0))
+          (declare (type fixnum num-to-write num-written)
+                   (type byte-buffer-index num-buffered))
+          (typecase seq
+            ((simple-array (unsigned-byte 8) (*))
+             (define-copy-op (simple-array (unsigned-byte 8) (*)) aref
+               :speed 3 :safety 0))
+            (simple-vector
+             (define-copy-op simple-vector svref
+               :speed 3 :safety 0))
+            ((simple-array * (*))
+             (define-copy-op (simple-array * (*)) aref))
+            (list
+             (define-copy-op list elt
+               :speed 3 :safety 0))
+            (t
+             (define-copy-op sequence elt))))))))
 
 (defmethod stream-clear-output ((stream gzip-output-stream))
   nil)
@@ -120,26 +140,50 @@ stream."))
 
 (defmethod stream-write-sequence ((stream gzip-output-stream)
                                   (seq sequence) &optional (start 0) end)
-  (with-slots (gz buffer)
-      stream
-    (let* ((end (or end (length seq)))
-           (num-bytes (- end start))
-           (num-to-write num-bytes)
-           (seq-offset start))
-      (flet ((fill-buffer (n)
-               (let ((num-buffered (min n +byte-buffer-size+)))
-                 (loop
-                    for i from 0 below num-buffered
-                    do (progn
-                         (setf (aref buffer i) (elt seq seq-offset))
-                         (incf seq-offset))
-                    finally (return num-buffered)))))
-        (loop
-           while (plusp num-to-write)
-           do (let ((num-buffered (fill-buffer num-to-write)))
-                (gz-write gz buffer num-buffered)
-                (decf num-to-write num-buffered))
-           finally (return num-bytes))))))
+  (macrolet ((define-copy-op (seq-type seq-accessor
+                                       &key (speed 1) (safety 2))
+               `(let ((seq-offset start))
+                  (declare (optimize (speed ,speed) (safety ,safety)))
+                  (declare (type (simple-array (unsigned-byte 8) (*)) buffer)
+                           (type ,seq-type seq))
+                  (loop
+                     while (plusp num-to-write)
+                     for num-buffered = (min num-to-write +byte-buffer-size+)
+                     for n of-type byte-buffer-index =
+                       (loop
+                          for i from 0 below num-buffered
+                          do (progn
+                               (setf (aref buffer i)
+                                     (,seq-accessor seq seq-offset))
+                               (incf seq-offset))
+                          finally (return
+                                    (gz-write gz buffer num-buffered)))
+                     do (progn
+                          (incf num-written n)
+                          (if (< n num-buffered)
+                              (setf num-to-write 0)
+                            (decf num-to-write n)))
+                     finally (return num-written)))))
+    (with-slots (gz buffer)
+        stream
+      (let* ((end (or end (length seq)))
+             (num-to-write (- end start))
+             (num-written 0))
+        (declare (type fixnum num-to-write num-written))
+        (typecase seq
+          ((simple-array (unsigned-byte 8) (*))
+           (define-copy-op (simple-array (unsigned-byte 8) (*)) aref
+             :speed 3 :safety 0))
+          (simple-vector
+           (define-copy-op simple-vector svref
+             :speed 3 :safety 0))
+          ((simple-array * (*))
+           (define-copy-op (simple-array * (*)) aref))
+          (list
+           (define-copy-op list elt
+             :speed 3 :safety 0))
+          (t
+           (define-copy-op sequence elt)))))))
 
 (defmethod stream-read-byte ((stream gzip-input-stream))
   (gz-read-byte (slot-value stream 'gz)))
