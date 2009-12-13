@@ -30,8 +30,33 @@
    #:+z-mem-error+
    #:+z-buf-error+
    #:+z-version-error+
+   #:+z-default-compression+
 
-   #:gzerror
+   #:z-stream
+   #:next-in
+   #:avail-in
+   #:total-in
+   #:next-out
+   #:avail-out
+   #:total-out
+   #:msg
+   #:zalloc
+   #:zfree
+   #:opaque
+   #:data-type
+   #:adler
+   #:reserved
+
+   #:deflate-init
+   #:%deflate
+   #:deflate-end
+   #:inflate-init
+   #:%inflate
+   #:inflate-end
+ 
+   #:%compress
+   #:%compress2
+   #:%uncompress
    #:gzopen
    #:gzclose
    #:gzdopen
@@ -45,6 +70,7 @@
    #:gzputc
    #:gzgets
    #:gzputs
+   #:gzerror
 
    #:*c-error-number*))
 
@@ -56,6 +82,7 @@
    ;; Constants
 
    ;; Conditions
+   #:zlib-error
    #:gz-io-error
 
    ;; Macros
@@ -69,6 +96,9 @@
    #:gzip-output-stream
 
    ;; Functions
+   #:compress
+   #:uncompress
+
    #:gz-open
    #:gz-close
    #:gz-eof-p

@@ -76,3 +76,42 @@
                    (close gz))))
     (ensure (probe-file out))
     (delete-file out)))
+
+(addtest (deoxybyte-gzip-tests) compress/uncompress/1
+  (let* ((in (merge-pathnames "data/lorem.txt"))
+         (data (make-array 1024 :element-type '(unsigned-byte 8)))
+         (len (+ (ceiling (+ 1024 (/ 1024 1000))) 12))
+         (comp (make-array len :element-type '(unsigned-byte 8)))
+         (uncomp (make-array len :element-type '(unsigned-byte 8))))
+    (with-open-file (stream in)
+      (loop
+         for i from 0 below (length data)
+         do (setf (aref data i) (char-code (read-char stream t)))))
+    (compress data comp)
+    (uncompress comp uncomp)
+    (ensure (equalp data (subseq uncomp 0 1024)))))
+
+(addtest (deoxybyte-gzip-tests) compress/uncompress/2
+  (let* ((in (merge-pathnames "data/lorem.txt"))
+         (data (make-array 1024 :element-type '(unsigned-byte 8)))
+         (len (+ (ceiling (+ 1024 (/ 1024 1000))) 12))
+         (comp (make-array len :element-type '(unsigned-byte 8)))
+         (uncomp (make-array 1024 :element-type '(unsigned-byte 8))))
+    (with-open-file (stream in)
+      (loop
+         for i from 0 below (length data)
+         do (setf (aref data i) (char-code (read-char stream t)))))
+    (loop
+       for start from 0 below 500 by 10
+       do (loop
+             for end from 500 below 1000 by 10
+             do (progn
+                  (fill comp 0)
+                  (fill uncomp 0)
+                  (compress data comp :source-start start :source-end end)
+                  (uncompress comp uncomp)
+                  (ensure (equalp (subseq data start end)
+                                  (subseq uncomp 0 (- end start)))
+                          :report "expected ~a but got ~a"
+                          :arguments ((subseq data start end)
+                                      (subseq uncomp 0 (- end start)))))))))

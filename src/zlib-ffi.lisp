@@ -59,9 +59,62 @@
 (defcvar ("errno" *c-error-number*) :int
   "Number of last error.")
 
-(defcfun ("gzerror" gzerror) :string
-  (gz :pointer)
-  (errnum :pointer))
+(defcstruct z-stream
+  (next-in :pointer)
+  (avail-in :uint)
+  (total-in :ulong)
+  (next-out :pointer)
+  (avail-out :uint)
+  (total-out :ulong)
+  (msg :string)
+  (internal-state :pointer)
+  (zalloc :pointer)
+  (zfree :pointer)
+  (opaque :pointer)
+  (data-type :int)
+  (adler :ulong)
+  (reserved :ulong))
+
+(defcfun ("deflateInit" deflate-init) :int
+  (strm :pointer)
+  (level :int))
+
+(defcfun ("deflate" %deflate) :int
+  (strm :pointer)
+  (flush flush-mode))
+
+(defcfun ("deflateEnd" deflate-end) :int
+  (strm :pointer))
+
+(defcfun ("inflateInit" inflate-init) :int
+  (strm :pointer)
+  (level :int))
+
+(defcfun ("inflate" %inflate) :int
+  (strm :pointer)
+  (flush flush-mode))
+
+(defcfun ("inflateEnd" inflate-end) :int
+  (strm :pointer))
+
+(defcfun ("compress" %compress) :int
+  (dest :pointer)
+  (destlen :pointer)
+  (source :pointer)
+  (sourcelen :long))
+
+(defcfun ("compress2" %compress2) :int
+  (dest :pointer)
+  (destlen :pointer)
+  (source :pointer)
+  (sourcelen :long)
+  (level :int))
+
+(defcfun ("uncompress" %uncompress) :int
+  (dest :pointer)
+  (destlen :pointer)
+  (source :pointer)
+  (sourcelen :long))
 
 (defcfun ("gzopen" gzopen) :pointer
   (path :string)
@@ -114,3 +167,7 @@
 (defcfun ("gzputc" gzputc) :int
   (gz :pointer)
   (char :uint))
+
+(defcfun ("gzerror" gzerror) :string
+  (gz :pointer)
+  (errnum :pointer))

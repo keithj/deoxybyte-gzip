@@ -42,8 +42,8 @@ Key:
 
 - direction (keyword): The direction, one of either :input or :output ,
   defaulting to :input .
-- compression (integer): The zlib compression level, if
-  compressing. An integer between 0 and 9, inclusive."
+- compression (integer): The zlib compression level, if compressing.
+  An integer between 0 and 9, inclusive."
   `(let ((,var (gz-open ,filespec :direction ,direction
                         :compression ,compression)))
      (unwind-protect
@@ -51,6 +51,77 @@ Key:
             ,@body)
        (when ,var
          (gz-close ,var)))))
+
+(defun compress (source dest &key (source-start 0) source-end
+                 (dest-start 0) (compression +z-default-compression+))
+  "Compresses bytes in array SOURCE to array DEST, returning the size
+in bytes of the compressed data."
+  (let ((source-end (or source-end (length source))))
+    (assert (<= source-start source-end (length source))
+            (source source-start source-end)
+            (txt "Invalid (SOURCE-START SOURCE-END) (~d ~d): expected values"
+                 "less than the length of the SOURCE array (~d) satisfying"
+                 "(<= SOURCE-START SOURCE-END (length SOURCE))")
+            source-start source-end (length source))
+    (assert (<= dest-start (length dest)) (dest dest-start)
+            (txt "Invalid DEST-START ~d: expected a value less than the"
+                 "length of the DEST array (~d)") dest-start (length dest))
+    (assert (and (integerp compression)
+                 (or (= +z-default-compression+ compression)
+                     (<= 0 compression 9))) (compression)
+                     (txt "Invalid COMPRESSION factor (~a):"
+                          "expected an integer between 0 and 9, inclusive.")
+                     compression)
+    (let ((source-len (- source-end source-start))
+          (dest-len (- (length dest) dest-start)))
+      (with-foreign-objects ((sbytes :uint8 source-len)
+                             (dbytes :uint8 dest-len)
+                             (dlen :long))
+        (setf (mem-ref dlen :long) dest-len)
+        (loop
+           for i from source-start below source-end
+           for j = 0 then (1+ j)
+           do (setf (mem-aref sbytes :uint8 j) (aref source i)))
+        (let ((val (%compress2 dbytes dlen sbytes source-len compression)))
+          (if (minusp val)
+              (z-error val)
+            (loop
+               with compressed-len = (mem-ref dlen :long)
+               for i from dest-start below compressed-len
+               do (setf (aref dest i) (mem-aref dbytes :uint8 i))
+               finally (return compressed-len))))))))
+
+(defun uncompress (source dest &key (source-start 0) source-end (dest-start 0))
+  "Uncompresses bytes in array SOURCE to array DEST, returning the
+size in bytes of the uncompressed data."
+  (let ((source-end (or source-end (length source))))
+    (assert (<= source-start source-end (length source))
+            (source source-start source-end)
+            (txt "Invalid (SOURCE-START SOURCE-END) (~d ~d): expected values"
+                 "less than the length of the SOURCE array (~d) satisfying"
+                 "(<= SOURCE-START SOURCE-END (length SOURCE))")
+            source-start source-end (length source))
+    (assert (<= dest-start (length dest)) (dest dest-start)
+            (txt "Invalid DEST-START ~d: expected a value less than the"
+                 "length of the DEST array (~d)") dest-start (length dest))
+    (let* ((source-len (- source-end source-start))
+           (dest-len (- (length dest) dest-start)))
+      (with-foreign-objects ((sbytes :uint8 source-len)
+                             (dbytes :uint8 dest-len)
+                             (dlen :long))
+        (setf (mem-ref dlen :long) dest-len)
+        (loop
+           for i from source-start below source-end
+           for j from 0 below source-len
+           do (setf (mem-aref sbytes :uint8 j) (aref source i)))
+        (let ((val (%uncompress dbytes dlen sbytes source-len)))
+          (if (minusp val)
+              (z-error val)
+            (loop
+               with uncompressed-len = (mem-ref dlen :long)
+               for i from dest-start below uncompressed-len
+               do (setf (aref dest i) (mem-aref dbytes :uint8 i))
+               finally (return uncompressed-len))))))))
 
 (defun gz-open (filespec &key (direction :input)
                 (compression nil compression-supplied-p))
@@ -78,9 +149,8 @@ Key:
                                             (:output #\w)) compression))
                      :open-p t)))
     (if (null-pointer-p (gz-ptr gz))
-        (error 'gz-io-error :errno *c-error-number*
-               :text (format nil "failed to open ~a (~a)"
-                             filespec (gz-error-message gz)))
+        (gz-error t (format nil "failed to open ~a (~a)"
+                            filespec (gz-error-message gz)))
       gz)))
 
 (defun gz-close (gz)
@@ -88,9 +158,8 @@ Key:
   (when (gz-open-p gz)
     (setf (gz-open-p gz) nil)
     (or (= +z-ok+ (gzclose (gz-ptr gz)))
-        (error 'gz-io-error :errno *c-error-number*
-               :text (format nil "failed to close cleanly (~a)"
-                             (gz-error-message gz))))))
+        (gz-error t (format nil "failed to close cleanly (~a)"
+                            (gz-error-message gz))))))
 
 (defun gz-eof-p (gz)
   "Returns T if GZ has reached EOF, or NIL otherwise."
@@ -109,7 +178,7 @@ Key:
   "Reads up to N bytes from GZ into octet vector BUFFER. Returns the
 number of bytes read, which may be 0."
   (cond ((not (gz-open-p gz))
-         (error 'gz-io-error :text "attempted to read from a closed stream"))
+         (gz-error nil "attempted to read from a closed stream"))
         ((gz-eof-p gz)
          0)
         (t
@@ -118,8 +187,7 @@ number of bytes read, which may be 0."
              (cond ((zerop x)
                     0)
                    ((= -1 x)
-                    (error 'gz-io-error :errno *c-error-number*
-                           :text (gz-error-message gz)))
+                    (gz-error t t))
                    (t
                     (loop
                        for i from 0 below x
@@ -135,64 +203,71 @@ unsigned-byte 8."
   (declare (type (simple-array (unsigned-byte 8) (*)) buffer)
            (type fixnum n))
   (unless (gz-open-p gz)
-    (error 'gz-io-error :text "attempted to write to a closed stream"))
+    (gz-error nil "attempted to write to a closed stream"))
   (with-foreign-pointer (buf (length buffer))
     (loop
        for i from 0 below n
        do (setf (mem-aref buf :char i) (aref buffer i)))
     (let ((x (the fixnum (gzwrite (gz-ptr gz) buf n))))
       (if (zerop x)
-          (error 'gz-io-error :errno *c-error-number*
-                 :text (gz-error-message gz))
+          (gz-error t t)
         x))))
 
 (defun gz-read-string (gz str n)
   "Reads up to N characters from GZ into string STR. Returns the
 number of characters read, which may be 0."
   (cond ((not (gz-open-p gz))
-         (error 'gz-io-error :text "attempted to read from a closed stream"))
+         (gz-error nil "attempted to read from a closed stream"))
         ((gz-eof-p gz)
          0)
         (t
          (let ((x (gzgets (gz-ptr gz) str (1+ n))))
            (if (= -1 x)
-               (error 'gz-io-error :errno *c-error-number*
-                      :text (gz-error-message gz))
+               (gz-error t t)
              x)))))
 
 (defun gz-write-string (gz buffer)
   "Writes up to N characters in octet vector BUFFER to GZ. Returns the
 number of characters written."
   (unless (gz-open-p gz)
-    (error 'gz-io-error :text "attempted to write to a closed stream"))
+    (gz-error nil "attempted to write to a closed stream"))
   (let ((n (gzputs (gz-ptr gz) buffer)))
     (if (= -1 n)
-        (error 'gz-io-error :errno *c-error-number*
-               :text (gz-error-message gz))
+        (gz-error t t)
       n)))
 
 (defun gz-read-byte (gz)
   "Returns a byte read from GZ, or :eof ."
   (cond ((not (gz-open-p gz))
-         (error 'gz-io-error :text "attempted to read from a closed stream"))
+         (gz-error nil "attempted to read from a closed stream"))
         ((gz-eof-p gz)
          :eof)
         (t
          (let ((b (gzgetc (gz-ptr gz))))
            (if (= -1 b)
-               (error 'gz-io-error :errno *c-error-number*
-                      :text (gz-error-message gz))
+               (gz-error t t)
              b)))))
 
 (defun gz-write-byte (gz byte)
   "Writes BYTE to GZ and returns BYTE."
   (unless (gz-open-p gz)
-    (error 'gz-io-error :text "attempted to write to a closed stream"))
+    (gz-error nil "attempted to write to a closed stream"))
   (let ((b (gzputc (gz-ptr gz) byte)))
     (if (= -1 b)
-        (error 'gz-io-error :errno *c-error-number*
-               :text (gz-error-message gz))
+        (gz-error t t)
       b)))
+
+(defun gz-error (gz &optional errno message)
+  "Raises a {define-condition gz-io-error} . An ERRNO integer and
+MESSAGE string may be supplied. If ERRNO or MESSAGE are T, they are
+retrieved using *C-ERROR-NUMBER* and {defun gz-error-message}
+respectively."
+  (error 'gz-io-error :errno (if (eql t errno)
+                                 *c-error-number*
+                               errno)
+         :text (if (eql t message)
+                   (gz-error-message gz)
+                 message)))
 
 (defun gz-error-message (gz)
   "Returns a zlib error message string relevant to GZ."
@@ -286,3 +361,55 @@ foo.tar.gz -> foo.tar"
                          :directory directory
                          :name (pathname-name pathname))))
     (pathname pathname)))
+
+(defun z-stream-open (&key (operation :deflate)
+                      (compression nil compression-supplied-p))
+  (when (and compression-supplied-p compression)
+    (assert (and (integerp compression) (<= 0 compression 9)) (compression)
+            (txt "Invalid compression factor ~a:"
+                 "expected an integer between 0 and 9, inclusive.")
+            compression))
+  (let* ((z-stream (make-z-stream))
+         (val (ecase operation
+                (:deflate (deflate-init z-stream compression))
+                (:inflate (inflate-init z-stream compression)))))
+    (if (minusp val)
+        (z-error val)
+      z-stream)))
+
+(defun make-z-stream ()
+  (let ((zs (foreign-alloc 'z-stream)))
+    (with-foreign-slots ((avail-in avail-out zalloc zfree opaque)
+                         zs z-stream)
+      (setf avail-in 0
+            avail-out 0
+            zalloc (null-pointer)
+            zfree (null-pointer)
+            opaque (null-pointer)))
+    zs))
+
+(defun z-stream-close (z-stream &key (operation :deflate))
+  (let ((val (ecase operation
+               (:deflate (deflate-end z-stream))
+               (:inflate (inflate-end z-stream)))))
+    (if (minusp val)
+        (z-error val)
+      t)))
+
+(defun z-error (errno &optional message)
+  "Raises a {define-condition zlib-error} . A MESSAGE string may be
+supplied, otherwise it will be determined from ERRNO."
+  (error 'zlib-error :errno errno
+         :text (or message
+                   (cond ((= +z-stream-error+ errno)
+                          "zlib stream error")
+                         ((= +z-buf-error+ errno)
+                          "there was not enough space in the output buffer")
+                         ((= +z-mem-error+ errno)
+                          "the was not enough memory to perform the operation")
+                         ((= +z-data-error+ errno)
+                          "the input data were corrupted or incomplete")
+                         ((= +z-version-error+ errno)
+                          "zlib versions are incompatible")
+                         (t
+                          (format nil "zlib error ~d" errno))))))
