@@ -372,7 +372,7 @@ foo.tar.gz -> foo.tar"
   (let* ((z-stream (make-z-stream))
          (val (ecase operation
                 (:deflate (deflate-init z-stream compression))
-                (:inflate (inflate-init z-stream compression)))))
+                (:inflate (inflate-init z-stream)))))
     (if (minusp val)
         (z-error val)
       z-stream)))

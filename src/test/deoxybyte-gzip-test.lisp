@@ -77,6 +77,48 @@
     (ensure (probe-file out))
     (delete-file out)))
 
+;; TODO -- factor the common parts out of these tests
+(addtest (deoxybyte-gzip-tests) compress/1
+  (let* ((in (merge-pathnames "data/lorem.txt"))
+         (data (make-array 1024 :element-type '(unsigned-byte 8)))
+         (len (+ (ceiling (+ 1024 (/ 1024 1000))) 12))
+         (comp (make-array len :element-type '(unsigned-byte 8))))
+    (with-open-file (stream in)
+      (loop
+         for i from 0 below (length data)
+         do (setf (aref data i) (char-code (read-char stream t)))))
+    (ensure-error
+      (compress data comp :source-start -1))
+    (ensure-error
+      (compress data comp :source-start 9999))
+    (ensure-error
+      (compress data comp :source-start 100 :source-end 90))
+    (ensure-error
+      (compress data comp :dest-start -1))
+    (ensure-error
+      (compress data comp :dest-start 9999))))
+
+(addtest (deoxybyte-gzip-tests) uncompress/1
+  (let* ((in (merge-pathnames "data/lorem.txt"))
+         (data (make-array 1024 :element-type '(unsigned-byte 8)))
+         (len (+ (ceiling (+ 1024 (/ 1024 1000))) 12))
+         (comp (make-array len :element-type '(unsigned-byte 8)))
+         (uncomp (make-array len :element-type '(unsigned-byte 8))))
+    (with-open-file (stream in)
+      (loop
+         for i from 0 below (length data)
+         do (setf (aref data i) (char-code (read-char stream t)))))
+    (ensure-error
+      (uncompress data comp :source-start -1))
+    (ensure-error
+      (uncompress data comp :source-start 9999))
+    (ensure-error
+      (uncompress data comp :source-start 100 :source-end 90))
+    (ensure-error
+      (uncompress data comp :dest-start -1))
+    (ensure-error
+      (uncompress data comp :dest-start 9999))))
+
 (addtest (deoxybyte-gzip-tests) compress/uncompress/1
   (let* ((in (merge-pathnames "data/lorem.txt"))
          (data (make-array 1024 :element-type '(unsigned-byte 8)))

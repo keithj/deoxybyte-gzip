@@ -75,7 +75,7 @@
   (adler :ulong)
   (reserved :ulong))
 
-(defcfun ("deflateInit" deflate-init) :int
+(defcfun (deflate-init "deflateInit") :int 
   (strm :pointer)
   (level :int))
 
@@ -86,9 +86,8 @@
 (defcfun ("deflateEnd" deflate-end) :int
   (strm :pointer))
 
-(defcfun ("inflateInit" inflate-init) :int
-  (strm :pointer)
-  (level :int))
+(defcfun (inflate-init "inflateInit") :int
+  (strm :pointer))
 
 (defcfun ("inflate" %inflate) :int
   (strm :pointer)
