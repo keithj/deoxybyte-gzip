@@ -42,6 +42,7 @@
                           :pathname "src/"
                           :components ((:file "package")
                                        (:file "zlib-ffi")
+                                       (:file "conditions")
                                        (:file "deoxybyte-gzip")
                                        (:file "gzip-stream")))
                  (:lift-test-config :lift-tests
