@@ -20,6 +20,9 @@
 (defpackage :zlib-ffi
   (:use #:common-lisp #:cffi)
   (:export
+   #:+z-no-flush+
+   #:+z-full-flush+
+   #:+z-finish+
    #:+z-ok+
    #:+z-null+
    #:+z-stream-end+
@@ -47,10 +50,13 @@
    #:adler
    #:reserved
 
+   #:zlib-version
    #:deflate-init
+   #:%deflate-init
    #:%deflate
    #:deflate-end
    #:inflate-init
+   #:%inflate-init
    #:%inflate
    #:inflate-end
  
@@ -114,4 +120,9 @@
    #:gzip
    #:gunzip
 
-   #:make-gzip-stream))
+   #:make-gzip-stream
+
+   #:deflate-stream
+   #:inflate-stream
+   #:deflate-vector
+   #:inflate-vector))

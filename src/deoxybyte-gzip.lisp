@@ -19,6 +19,8 @@
 
 (in-package :uk.co.deoxybyte-gzip)
 
+(defconstant +default-zlib-buffer-size+ (expt 2 18))
+
 (defstruct gz
   "A gzip handle.
 
@@ -45,7 +47,8 @@ Key:
 - compression (integer): The zlib compression level, if compressing.
   An integer between 0 and 9, inclusive."
   `(let ((,var (gz-open ,filespec :direction ,direction
-                        :compression ,compression)))
+                        :compression (or ,compression
+                                         +z-default-compression+))))
      (unwind-protect
           (progn
             ,@body)
@@ -54,18 +57,20 @@ Key:
 
 (defun compress (source dest &key (source-start 0) source-end
                  (dest-start 0) (compression +z-default-compression+))
-  "Compresses bytes in array SOURCE to array DEST, returning the size
-in bytes of the compressed data."
+  "Compresses bytes in array SOURCE to array DEST, returning DEST and
+the compressed size in bytes."
+  (check-type source (vector (unsigned-byte 8)))
+  (check-type dest (vector (unsigned-byte 8)))
   (let ((source-end (or source-end (length source))))
     (assert (<= source-start source-end (length source))
             (source source-start source-end)
             (txt "Invalid (SOURCE-START SOURCE-END) (~d ~d): expected values"
                  "less than the length of the SOURCE array (~d) satisfying"
-                 "(<= SOURCE-START SOURCE-END (length SOURCE))")
+                 "(<= SOURCE-START SOURCE-END (length SOURCE)).")
             source-start source-end (length source))
     (assert (<= dest-start (length dest)) (dest dest-start)
             (txt "Invalid DEST-START ~d: expected a value less than the"
-                 "length of the DEST array (~d)") dest-start (length dest))
+                 "length of the DEST array (~d).") dest-start (length dest))
     (assert (and (integerp compression)
                  (or (= +z-default-compression+ compression)
                      (<= 0 compression 9))) (compression)
@@ -89,21 +94,23 @@ in bytes of the compressed data."
                with compressed-len = (mem-ref dlen :long)
                for i from dest-start below compressed-len
                do (setf (aref dest i) (mem-aref dbytes :uint8 i))
-               finally (return compressed-len))))))))
+               finally (return (values dest compressed-len)))))))))
 
 (defun uncompress (source dest &key (source-start 0) source-end (dest-start 0))
-  "Uncompresses bytes in array SOURCE to array DEST, returning the
-size in bytes of the uncompressed data."
+  "Uncompresses bytes in array SOURCE to array DEST, returning DEST
+and the compressed size in bytes."
+  (check-type source (vector (unsigned-byte 8)))
+  (check-type dest (vector (unsigned-byte 8)))
   (let ((source-end (or source-end (length source))))
     (assert (<= source-start source-end (length source))
             (source source-start source-end)
             (txt "Invalid (SOURCE-START SOURCE-END) (~d ~d): expected values"
                  "less than the length of the SOURCE array (~d) satisfying"
-                 "(<= SOURCE-START SOURCE-END (length SOURCE))")
+                 "(<= SOURCE-START SOURCE-END (length SOURCE)).")
             source-start source-end (length source))
     (assert (<= dest-start (length dest)) (dest dest-start)
             (txt "Invalid DEST-START ~d: expected a value less than the"
-                 "length of the DEST array (~d)") dest-start (length dest))
+                 "length of the DEST array (~d).") dest-start (length dest))
     (let* ((source-len (- source-end source-start))
            (dest-len (- (length dest) dest-start)))
       (with-foreign-objects ((sbytes :uint8 source-len)
@@ -121,10 +128,10 @@ size in bytes of the uncompressed data."
                with uncompressed-len = (mem-ref dlen :long)
                for i from dest-start below uncompressed-len
                do (setf (aref dest i) (mem-aref dbytes :uint8 i))
-               finally (return uncompressed-len))))))))
+               finally (return (values dest uncompressed-len)))))))))
 
 (defun gz-open (filespec &key (direction :input)
-                (compression nil compression-supplied-p))
+                (compression +z-default-compression+))
   "Opens FILESPEC for compression or decompression.
 
 Arguments:
@@ -137,11 +144,12 @@ Key:
   defaulting to :input .
 - compression (integer): The zlib compression level, if
   compressing. An integer between 0 and 9, inclusive."
-  (when (and compression-supplied-p compression)
-    (assert (and (integerp compression) (<= 0 compression 9)) (compression)
-            (txt "Invalid compression factor ~a:"
-                 "expected an integer between 0 and 9, inclusive.")
-            compression))
+  (assert (and (integerp compression)
+               (or (= +z-default-compression+ compression)
+                   (<= 0 compression 9))) (compression)
+                   (txt "Invalid COMPRESSION factor (~a):"
+                        "expected an integer between 0 and 9, inclusive.")
+                   compression)
   (let ((gz (make-gz :ptr (gzopen (pathstring filespec)
                                   (format nil "~c~@[~d~]"
                                           (ecase direction
@@ -283,7 +291,8 @@ compression level. Returns two values, OUT-FILESPEC and the number of
 bytes decompressed."
   (let ((out-filespec (or out-filespec (gunzip-pathname in-filespec))))
     (assert (not (equalp in-filespec out-filespec)) (in-filespec)
-            "Unable to make implicit output filename from ~s, please specify OUT-FILESPEC explicitly."
+            (txt "Unable to make implicit output filename from ~s,"
+                 "please specify OUT-FILESPEC explicitly.")
             in-filespec)
     (with-open-file (stream out-filespec :direction :output
                             :element-type '(unsigned-byte 8)
@@ -304,7 +313,8 @@ compression level. Returns two values, OUT-FILESPEC and the number of
 bytes compressed."
   (let ((out-filespec (or out-filespec (gzip-pathname in-filespec))))
     (assert (not (equalp in-filespec out-filespec)) (in-filespec)
-            "Unable to make implicit output filename from ~s, please specify OUT-FILESPEC explicitly."
+            (txt "Unable to make implicit output filename from ~s,"
+                 "please specify OUT-FILESPEC explicitly.")
             in-filespec)
     (with-open-file (stream in-filespec :element-type '(unsigned-byte 8))
       (with-gz-file (gz out-filespec :direction :output)
@@ -362,13 +372,50 @@ foo.tar.gz -> foo.tar"
                          :name (pathname-name pathname))))
     (pathname pathname)))
 
-(defun z-stream-open (&key (operation :deflate)
-                      (compression nil compression-supplied-p))
-  (when (and compression-supplied-p compression)
-    (assert (and (integerp compression) (<= 0 compression 9)) (compression)
-            (txt "Invalid compression factor ~a:"
-                 "expected an integer between 0 and 9, inclusive.")
-            compression))
+(defun deflate-stream (source dest
+                       &key (buffer-size +default-zlib-buffer-size+))
+  (assert (input-stream-p source) (source)
+          "Invalid SOURCE ~a: expected an input-stream." source)
+  (assert (output-stream-p dest) (dest)
+          "Invalid DEST ~a: expected an output-stream." dest)
+  (z-stream-operation :deflate source dest
+                      (lambda (buffer stream end)
+                        (read-sequence buffer stream :end end))
+                      (lambda (buffer stream end)
+                        (write-sequence buffer stream :end end))
+                      buffer-size))
+
+(defun inflate-stream (source dest
+                       &key (buffer-size +default-zlib-buffer-size+))
+  (assert (input-stream-p source) (source)
+          "Invalid SOURCE ~a: expected an input-stream." source)
+  (assert (output-stream-p dest) (dest)
+          "Invalid DEST ~a: expected an output-stream." dest)
+  (z-stream-operation :inflate source dest
+                      (lambda (buffer stream end)
+                        (read-sequence buffer stream :end end))
+                      (lambda (buffer stream end)
+                        (write-sequence buffer stream :end end))
+                      buffer-size))
+
+(defun deflate-vector (source dest)
+  (check-type source (vector (unsigned-byte 8)))
+  (check-type dest (vector (unsigned-byte 8)))
+  (z-vector-operation :deflate source dest))
+
+(defun inflate-vector (source dest)
+  (check-type source (vector (unsigned-byte 8)))
+  (check-type dest (vector (unsigned-byte 8)))
+  (z-vector-operation :inflate source dest))
+
+(defun z-stream-open (operation &key (compression +z-default-compression+))
+  "Returns a new Z-STREAM initialised for OPERATION (:inflate or :deflate)."
+  (assert (and (integerp compression)
+               (or (= +z-default-compression+ compression)
+                   (<= 0 compression 9))) (compression)
+                   (txt "Invalid COMPRESSION factor (~a):"
+                        "expected an integer between 0 and 9, inclusive.")
+                   compression)
   (let* ((z-stream (make-z-stream))
          (val (ecase operation
                 (:deflate (deflate-init z-stream compression))
@@ -378,23 +425,112 @@ foo.tar.gz -> foo.tar"
       z-stream)))
 
 (defun make-z-stream ()
+  "Makes an returns a new Z-STREAM."
   (let ((zs (foreign-alloc 'z-stream)))
-    (with-foreign-slots ((avail-in avail-out zalloc zfree opaque)
-                         zs z-stream)
+    (with-foreign-slots ((avail-in avail-out zalloc zfree opaque) zs z-stream)
       (setf avail-in 0
             avail-out 0
-            zalloc (null-pointer)
+            zalloc (null-pointer)  ; zlib casts +z-null+ to fn pointer
             zfree (null-pointer)
             opaque (null-pointer)))
     zs))
 
-(defun z-stream-close (z-stream &key (operation :deflate))
+(defun z-stream-close (z-stream operation)
+  "Signals the end of OPERATION (:inflate or :deflate) on Z-STREAM."
   (let ((val (ecase operation
                (:deflate (deflate-end z-stream))
                (:inflate (inflate-end z-stream)))))
     (if (minusp val)
         (z-error val)
       t)))
+
+(defun z-vector-operation (operation source dest)
+  (let ((zs (z-stream-open operation))
+        (op-fn (ecase operation
+                 (:inflate #'%inflate)
+                 (:deflate #'%deflate))))
+    (unwind-protect
+         (with-foreign-slots ((avail-in next-in avail-out next-out
+                               total-in total-out) zs z-stream)
+           (with-pointer-to-vector-data (in source)
+             (with-pointer-to-vector-data (out dest)
+               (setf next-in in
+                     avail-in (length source)
+                     next-out out
+                     avail-out (length dest))
+               (let ((x (funcall op-fn zs +z-finish+)))
+                 (if (= +z-stream-error+ x)
+                     (z-error x)
+                   (values dest total-in total-out))))))
+           (z-stream-close zs operation))))
+
+(defun z-stream-operation (operation source dest input-fn output-fn buffer-size)
+  "Implements Zlib compression/decompression using inflate/deflate on
+Lisp streams, as described in the Zlib Usage Example.
+
+Arguments:
+
+- operation (symbol): The operation type, either :inflate or :deflate .
+- source (stream): A Lisp octet input stream.
+- dest (stream): A Lisp octet output stream.
+- input-fn (function): A Lisp function that accepts 3 arguments, an
+  input stream, a buffer and an integer n. The function must read up
+  to n bytes from the input stream into the buffer and return the
+  number of bytes read.
+- output-fn (function): A Lisp function that accepts 3 arguments, an
+  output stream, a buffer and an integer n. The function must write up
+  to n bytes to the output stream into the buffer and return the
+  number of bytes written.
+- buffer-size (fixnum): The size of the buffer used in the
+  compression/decompression step(s).
+
+Returns:
+- Number of bytes read.
+- Number of bytes written."
+  (let ((zs (z-stream-open operation))
+        (op-fn (ecase operation
+                 (:inflate #'%inflate)
+                 (:deflate #'%deflate)))
+        (in-buffer (make-shareable-byte-vector buffer-size))
+        (out-buffer (make-shareable-byte-vector buffer-size)))
+    (unwind-protect
+         (with-foreign-slots ((avail-in next-in avail-out next-out
+                               total-in total-out) zs z-stream)
+           (with-pointer-to-vector-data (in in-buffer)
+             (with-pointer-to-vector-data (out out-buffer)
+               (flet ((read-from-zs ()
+                        (when (zerop avail-in)
+                          (let ((num-read (funcall input-fn in-buffer
+                                                   source buffer-size)))
+                            (when (plusp num-read)
+                              (setf next-in in
+                                    avail-in num-read))))
+                        avail-in)
+                      (write-from-zs ()
+                        (let ((fullp (zerop avail-out))
+                              (output-bytes (- buffer-size avail-out)))
+                          (unless (zerop output-bytes)
+                            (funcall output-fn out-buffer dest output-bytes)
+                            (setf next-out out
+                                  avail-out buffer-size))
+                          fullp))) ; Was the output buffer full on writing?
+                 (setf next-out out
+                       avail-out buffer-size)
+                 (loop
+                    for num-read = (read-from-zs)
+                    while (plusp num-read)
+                    do (let ((flush (if (= buffer-size num-read)
+                                        +z-no-flush+
+                                      +z-finish+)))
+                         (loop
+                            with out-full = t
+                            while out-full
+                            do (let ((x (funcall op-fn zs flush)))
+                                 (when (= +z-stream-error+ x)
+                                   (z-error x))
+                                 (setf out-full (write-from-zs)))))
+                    finally (return (values total-in total-out)))))))
+      (z-stream-close zs operation))))
 
 (defun z-error (errno &optional message)
   "Raises a {define-condition zlib-error} . A MESSAGE string may be

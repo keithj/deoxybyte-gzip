@@ -50,7 +50,8 @@ stream."))
   (:documentation "A stream that writes characters to a compressed
 stream."))
 
-(defun make-gzip-stream (filespec &key (direction :input) compression)
+(defun make-gzip-stream (filespec &key (direction :input)
+                         (compression +z-default-compression+))
   (make-instance (ecase direction
                    (:input 'gzip-input-stream)
                    (:output 'gzip-output-stream))

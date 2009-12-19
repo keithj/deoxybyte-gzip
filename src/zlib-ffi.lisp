@@ -24,6 +24,11 @@
 
 (use-foreign-library zlib)
 
+(defconstant +z-no-flush+ 0)
+(defconstant +z-sync-flush+ 2)
+(defconstant +z-full-flush+ 3)
+(defconstant +z-finish+ 4)
+
 (defconstant +z-ok+ 0 "No error.")
 (defconstant +z-null+ 0)
 (defconstant +z-stream-end+ 1)
@@ -60,11 +65,16 @@
   "Number of last error.")
 
 (defcstruct z-stream
-  (next-in :pointer)
-  (avail-in :uint)
+  "Zlib stream structure."
+  (next-in :pointer)                    ; Buffer containing input
+                                        ; bytes
+  (avail-in :uint)                      ; Number of bytes available in
+                                        ; the input buffer
   (total-in :ulong)
-  (next-out :pointer)
-  (avail-out :uint)
+  (next-out :pointer)                   ; Buffer containing output
+                                        ; bytes
+  (avail-out :uint)                     ; Space in bytes available in
+                                        ; the output buffer
   (total-out :ulong)
   (msg :string)
   (internal-state :pointer)
@@ -75,9 +85,17 @@
   (adler :ulong)
   (reserved :ulong))
 
-(defcfun (deflate-init "deflateInit") :int 
+(defcfun ("zlibVersion" zlib-version) :string)
+
+(defcfun ("deflateInit_" %deflate-init) :int 
   (strm :pointer)
-  (level :int))
+  (level :int)
+  (version :string)
+  (strm-size :int))
+
+(defmacro deflate-init (strm level)
+  "Macro that emulates Zlib's deflate-init."
+  `(%deflate-init ,strm ,level ,(zlib-version) ,(foreign-type-size 'z-stream)))
 
 (defcfun ("deflate" %deflate) :int
   (strm :pointer)
@@ -86,8 +104,14 @@
 (defcfun ("deflateEnd" deflate-end) :int
   (strm :pointer))
 
-(defcfun (inflate-init "inflateInit") :int
-  (strm :pointer))
+(defcfun ("inflateInit_" %inflate-init) :int
+  (strm :pointer)
+  (version :string)
+  (strm-size :int))
+
+(defmacro inflate-init (strm)
+  "Macro that emulates Zlib's inflate-init."
+  `(%inflate-init ,strm ,(zlib-version) ,(foreign-type-size 'z-stream)))
 
 (defcfun ("inflate" %inflate) :int
   (strm :pointer)
