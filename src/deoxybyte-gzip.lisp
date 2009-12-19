@@ -215,7 +215,7 @@ unsigned-byte 8."
   (with-foreign-pointer (buf (length buffer))
     (loop
        for i from 0 below n
-       do (setf (mem-aref buf :char i) (aref buffer i)))
+       do (setf (mem-aref buf :uint8 i) (aref buffer i)))
     (let ((x (the fixnum (gzwrite (gz-ptr gz) buf n))))
       (if (zerop x)
           (gz-error t t)
@@ -431,18 +431,21 @@ foo.tar.gz -> foo.tar"
       (setf avail-in 0
             avail-out 0
             zalloc (null-pointer)  ; zlib casts +z-null+ to fn pointer
-            zfree (null-pointer)
+            zfree (null-pointer)   ; so we emulate that behaviour
             opaque (null-pointer)))
     zs))
 
 (defun z-stream-close (z-stream operation)
-  "Signals the end of OPERATION (:inflate or :deflate) on Z-STREAM."
-  (let ((val (ecase operation
-               (:deflate (deflate-end z-stream))
-               (:inflate (inflate-end z-stream)))))
-    (if (minusp val)
-        (z-error val)
-      t)))
+  "Signals the end of OPERATION (:inflate or :deflate) on
+Z-STREAM and frees the Z-STREAM memory."
+  (unwind-protect
+       (let ((val (ecase operation
+                    (:deflate (deflate-end z-stream))
+                    (:inflate (inflate-end z-stream)))))
+         (if (minusp val)
+             (z-error val)
+           t))
+    (foreign-free z-stream)))
 
 (defun z-vector-operation (operation source dest)
   (let ((zs (z-stream-open operation))
@@ -459,9 +462,14 @@ foo.tar.gz -> foo.tar"
                      next-out out
                      avail-out (length dest))
                (let ((x (funcall op-fn zs +z-finish+)))
-                 (if (= +z-stream-error+ x)
-                     (z-error x)
-                   (values dest total-in total-out))))))
+                 (cond ((= +z-stream-error+ x)
+                        (z-error x))
+                       ((= +z-ok+ x)
+                        (z-error +z-buf-error+
+                                 (txt "insufficient space in DEST for"
+                                      "compressed data")))
+                       (t
+                        (values dest total-in total-out)))))))
            (z-stream-close zs operation))))
 
 (defun z-stream-operation (operation source dest input-fn output-fn buffer-size)
