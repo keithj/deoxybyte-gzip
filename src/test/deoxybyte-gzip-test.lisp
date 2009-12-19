@@ -19,6 +19,17 @@
 
 (in-package :uk.co.deoxybyte-gzip-test)
 
+(defun binary-file= (x y)
+  (with-open-file (s1 x :element-type '(unsigned-byte 8))
+    (with-open-file (s2 y :element-type '(unsigned-byte 8))
+      (let ((v1 (make-array (file-length s1)
+                            :element-type '(unsigned-byte 8)))
+            (v2 (make-array (file-length s2)
+                            :element-type '(unsigned-byte 8))))
+        (read-sequence v1 s1)
+        (read-sequence v2 s2)
+        (equalp v1 v2)))))
+
 (deftestsuite deoxybyte-gzip-tests ()
   ())
 
@@ -157,3 +168,27 @@
                           :report "expected ~a but got ~a"
                           :arguments ((subseq data start end)
                                       (subseq uncomp 0 (- end start)))))))))
+
+(addtest (deoxybyte-gzip-tests) deflate-stream/1
+   (let ((in (merge-pathnames "data/lorem.txt"))
+         (out (merge-pathnames "data/lorem.tmp.dfl"))
+         (test (merge-pathnames "data/lorem.txt.dfl")))
+     (with-open-file (s1 in :element-type '(unsigned-byte 8))
+       (with-open-file (s2 out :element-type '(unsigned-byte 8)
+                           :direction :output
+                           :if-exists :supersede)
+         (deflate-stream s1 s2)))
+     (ensure (binary-file= out test))
+     (delete-file out)))
+
+(addtest (deoxybyte-gzip-tests) inflate-stream/1
+   (let ((in (merge-pathnames "data/lorem.txt.dfl"))
+         (out (merge-pathnames "data/lorem.tmp.txt"))
+         (test (merge-pathnames "data/lorem.txt")))
+     (with-open-file (s1 in :element-type '(unsigned-byte 8))
+       (with-open-file (s2 out :element-type '(unsigned-byte 8)
+                           :direction :output
+                           :if-exists :supersede)
+         (inflate-stream s1 s2)))
+     (ensure (binary-file= out test))
+     (delete-file out)))

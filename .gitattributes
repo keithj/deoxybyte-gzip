@@ -1,1 +1,2 @@
 *.gz -crlf -diff -merge
+*.dfl -crlf -diff -merge
