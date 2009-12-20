@@ -45,6 +45,12 @@
 (defconstant +z-best-compression+ 9)
 (defconstant +z-default-compression+ -1)
 
+(defconstant +z-filtered+ 1)
+(defconstant +z-huffman-only+ 2)
+(defconstant +z-default-strategy+ 0)
+
+(defconstant +z-deflated+ 8)
+
 (defconstant +z-null+ 0)
 
 (defctype off-t #-x86-64 :uint32
@@ -94,8 +100,23 @@
   (strm-size :int))
 
 (defmacro deflate-init (strm level)
-  "Macro that emulates Zlib's deflate-init."
+  "Macro that emulates Zlib's deflateInit."
   `(%deflate-init ,strm ,level ,(zlib-version) ,(foreign-type-size 'z-stream)))
+
+(defcfun ("deflateInit2_" %deflate-init2) :int
+  (strm :pointer)
+  (level :int)
+  (method :int)
+  (window-bits :int)
+  (mem-level :int)
+  (strategy :int)
+  (version :string)
+  (strm-size :int))
+
+(defmacro deflate-init2 (strm level method window-bits mem-level strategy)
+  "Macro that emulates Zlib's deflateInit2."
+  `(%deflate-init2 ,strm ,level ,method ,window-bits ,mem-level ,strategy
+                   ,(zlib-version) ,(foreign-type-size 'z-stream)))
 
 (defcfun ("deflate" %deflate) :int
   (strm :pointer)
@@ -110,8 +131,19 @@
   (strm-size :int))
 
 (defmacro inflate-init (strm)
-  "Macro that emulates Zlib's inflate-init."
+  "Macro that emulates Zlib's inflateInit."
   `(%inflate-init ,strm ,(zlib-version) ,(foreign-type-size 'z-stream)))
+
+(defcfun ("inflateInit2_" %inflate-init2) :int
+  (strm :pointer)
+  (window-bits :int)
+  (version :string)
+  (strm-size :int))
+
+(defmacro inflate-init2 (strm window-bits)
+  "Macro that emulates Zlib's inflateInit2."
+  `(%inflate-init2 ,strm ,window-bits
+                   ,(zlib-version) ,(foreign-type-size 'z-stream)))
 
 (defcfun ("inflate" %inflate) :int
   (strm :pointer)

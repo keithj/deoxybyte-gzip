@@ -199,8 +199,7 @@ number of bytes read, which may be 0."
                    (t
                     (loop
                        for i from 0 below x
-                       do (setf (aref buffer i)
-                                (mem-aref buf :char i))
+                       do (setf (aref buffer i) (mem-aref buf :uint8 i))
                        finally (return x)))))))))
 
 (defun gz-write (gz buffer n)
@@ -373,42 +372,138 @@ foo.tar.gz -> foo.tar"
     (pathname pathname)))
 
 (defun deflate-stream (source dest
-                       &key (buffer-size +default-zlib-buffer-size+))
+                       &key (buffer-size +default-zlib-buffer-size+)
+                       (compression +z-default-compression+)
+                       suppress-header (window-bits 15) (mem-level 8)
+                       (strategy :default-strategy))
+  "Deflates stream SOURCE to stream DEST.
+
+Arguments:
+
+- source (stream): A binary input stream.
+- dest (stream): A binary output stream.
+
+Key:
+
+- buffer-size (fixnum): The size of the internal buffer used by Zlib.
+- compression (fixnum): The Zlib compression factor (0-9, inclusive).
+- suppress-header (boolean): Exposes an undocumented feature of Zlib
+  whereby the compressed data may be produced without a Zlib header or
+  checksum.
+- window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
+- mem-level (fixnum): The Zlib mem-level argument (1-9, inclusive).
+- strategy (fixnum): The Zlib strategy argument (one
+  of :default-strategy , :filtered or :huffman-only ).
+
+Returns:
+- Number of bytes read.
+- Number of bytes written."
   (assert (input-stream-p source) (source)
           "Invalid SOURCE ~a: expected an input-stream." source)
   (assert (output-stream-p dest) (dest)
           "Invalid DEST ~a: expected an output-stream." dest)
   (z-stream-operation :deflate source dest
-                      (lambda (buffer stream end)
-                        (read-sequence buffer stream :end end))
-                      (lambda (buffer stream end)
-                        (write-sequence buffer stream :end end))
-                      buffer-size))
+                      #'fill-from-stream #'empty-to-stream buffer-size
+                      :compression compression
+                      :suppress-header suppress-header
+                      :window-bits window-bits :mem-level mem-level
+                      :strategy strategy))
 
 (defun inflate-stream (source dest
-                       &key (buffer-size +default-zlib-buffer-size+))
+                       &key (buffer-size +default-zlib-buffer-size+)
+                       suppress-header (window-bits 15))
+  "Inflates stream SOURCE to stream DEST.
+
+Arguments:
+
+- source (stream): A binary input stream.
+- dest (stream): A binary output stream.
+
+Key:
+
+- buffer-size (fixnum): The size of the internal buffer used by Zlib.
+- suppress-header (boolean): Exposes an undocumented feature of Zlib
+  whereby the compressed data may be produced without a Zlib header or
+  checksum. This must be set T if the data were compressed with the
+  header suppressed.
+- window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
+
+Returns:
+- Number of bytes read.
+- Number of bytes written."
   (assert (input-stream-p source) (source)
           "Invalid SOURCE ~a: expected an input-stream." source)
   (assert (output-stream-p dest) (dest)
           "Invalid DEST ~a: expected an output-stream." dest)
   (z-stream-operation :inflate source dest
-                      (lambda (buffer stream end)
-                        (read-sequence buffer stream :end end))
-                      (lambda (buffer stream end)
-                        (write-sequence buffer stream :end end))
-                      buffer-size))
+                      #'fill-from-stream #'empty-to-stream buffer-size
+                      :suppress-header suppress-header
+                      :window-bits window-bits))
 
-(defun deflate-vector (source dest)
+(defun deflate-vector (source dest
+                       &key (compression +z-default-compression+)
+                       suppress-header (window-bits 15) (mem-level 8)
+                       (strategy :default-strategy))
+  "Deflates vector SOURCE to vector DEST.
+
+Arguments:
+
+- source (vector): An octet vector.
+- dest (vector): An octet vector.
+
+Key:
+
+- compression (fixnum): The Zlib compression factor (0-9, inclusive).
+- suppress-header (boolean): Exposes an undocumented feature of Zlib
+  whereby the compressed data may be produced without a Zlib header or
+  checksum.
+- window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
+- mem-level (fixnum): The Zlib mem-level argument (1-9, inclusive).
+- strategy (fixnum): The Zlib strategy argument (one
+  of :default-strategy , :filtered or :huffman-only ).
+
+Returns:
+- The DEST vector, containing compressed data.
+- Number of bytes read.
+- Number of bytes written (consequently the end position of the
+  compressed data in DEST)."
   (check-type source (vector (unsigned-byte 8)))
   (check-type dest (vector (unsigned-byte 8)))
-  (z-vector-operation :deflate source dest))
+  (z-vector-operation :deflate source dest :compression compression
+                      :suppress-header suppress-header
+                      :window-bits window-bits :mem-level mem-level
+                      :strategy strategy))
 
-(defun inflate-vector (source dest)
+(defun inflate-vector (source dest &key suppress-header (window-bits 15))
+  "Inflates vector SOURCE to vector DEST.
+
+Arguments:
+
+- source (vector): An octet vector.
+- dest (vector): An octet vector.
+
+Key:
+
+- compression (fixnum): The Zlib compression factor (0-9, inclusive).
+- suppress-header (boolean): Exposes an undocumented feature of Zlib
+  whereby the compressed data may be produced without a Zlib header or
+  checksum. This must be set T if the data were compressed with the
+  header suppressed.
+- window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
+
+Returns:
+- The DEST vector, containing decompressed data.
+- Number of bytes read.
+- Number of bytes written (consequently the end position of the
+  decompressed data in DEST)."
   (check-type source (vector (unsigned-byte 8)))
   (check-type dest (vector (unsigned-byte 8)))
-  (z-vector-operation :inflate source dest))
+  (z-vector-operation :inflate source dest :suppress-header suppress-header
+                      :window-bits window-bits))
 
-(defun z-stream-open (operation &key (compression +z-default-compression+))
+(defun z-stream-open (operation &key (compression +z-default-compression+)
+                      suppress-header (window-bits 15) (mem-level 8)
+                      (strategy :default-strategy))
   "Returns a new Z-STREAM initialised for OPERATION (:inflate or :deflate)."
   (assert (and (integerp compression)
                (or (= +z-default-compression+ compression)
@@ -416,16 +511,33 @@ foo.tar.gz -> foo.tar"
                    (txt "Invalid COMPRESSION factor (~a):"
                         "expected an integer between 0 and 9, inclusive.")
                    compression)
-  (let* ((z-stream (make-z-stream))
-         (val (ecase operation
-                (:deflate (deflate-init z-stream compression))
-                (:inflate (inflate-init z-stream)))))
-    (if (minusp val)
-        (z-error val)
-      z-stream)))
+  (assert (and (integerp window-bits)
+               (<= 9 window-bits 15)) (window-bits)
+               (txt "Invalid WINDOW-BITS (~a): expected an integer between"
+                    "9 and 15, inclusive."))
+  (assert (and (integerp mem-level)
+               (<= 1 mem-level 9)) (mem-level)
+               (txt "Invalid MEM-LEVEL (~a): expected an integer between"
+                    "1 and 9, inclusive."))
+  (let ((wbits (if suppress-header
+                   (- window-bits)      ; undocumented Zlib feature
+                 window-bits))
+        (strat (ecase strategy
+                 (:filtered +z-filtered+)
+                 (:huffman-only +z-huffman-only+)
+                 (:default-strategy +z-default-strategy+))))
+    (let* ((z-stream (make-z-stream))
+           (val (ecase operation
+                  (:deflate (deflate-init2 z-stream compression +z-deflated+
+                                           wbits mem-level strat))
+                  (:inflate (inflate-init2 z-stream wbits)))))
+      (if (minusp val)
+          (z-error val)
+        z-stream))))
 
 (defun make-z-stream ()
-  "Makes an returns a new Z-STREAM."
+  "Makes an returns a new Z-STREAM with the ZALLOC, ZFREE and OPAQUE
+slots filled with null-pointers."
   (let ((zs (foreign-alloc 'z-stream)))
     (with-foreign-slots ((avail-in avail-out zalloc zfree opaque) zs z-stream)
       (setf avail-in 0
@@ -447,8 +559,27 @@ Z-STREAM and frees the Z-STREAM memory."
            t))
     (foreign-free z-stream)))
 
-(defun z-vector-operation (operation source dest)
-  (let ((zs (z-stream-open operation))
+(defun z-vector-operation (operation source dest &rest z-stream-args)
+    "Implements Zlib compression/decompression using inflate/deflate
+in a single pass over a Lisp vector. Raises an error if the
+compressed/decompressed data do not fit in DEST.
+
+Arguments:
+
+- operation (symbol): The operation type, either :inflate or :deflate .
+- source (stream): A Lisp octet vector.
+- dest (stream): A Lisp octet vector.
+
+Rest:
+- Keyword arguments passed to {defun z-stream-open} .
+  See {defun z-stream-open}
+
+Returns:
+- The DEST vector, containing compressed data.
+- Number of bytes read.
+- Number of bytes written (consequently the end position of the
+  compressed/decompressed data in DEST)."
+  (let ((zs (apply #'z-stream-open operation z-stream-args))
         (op-fn (ecase operation
                  (:inflate #'%inflate)
                  (:deflate #'%deflate))))
@@ -472,7 +603,8 @@ Z-STREAM and frees the Z-STREAM memory."
                         (values dest total-in total-out)))))))
            (z-stream-close zs operation))))
 
-(defun z-stream-operation (operation source dest input-fn output-fn buffer-size)
+(defun z-stream-operation (operation source dest input-fn output-fn buffer-size
+                           &rest z-stream-args)
   "Implements Zlib compression/decompression using inflate/deflate on
 Lisp streams, as described in the Zlib Usage Example.
 
@@ -492,10 +624,14 @@ Arguments:
 - buffer-size (fixnum): The size of the buffer used in the
   compression/decompression step(s).
 
+Rest:
+- Keyword arguments passed to {defun z-stream-open} .
+  See {defun z-stream-open}
+
 Returns:
 - Number of bytes read.
 - Number of bytes written."
-  (let ((zs (z-stream-open operation))
+  (let ((zs (apply #'z-stream-open operation z-stream-args))
         (op-fn (ecase operation
                  (:inflate #'%inflate)
                  (:deflate #'%deflate)))
@@ -557,3 +693,11 @@ supplied, otherwise it will be determined from ERRNO."
                           "zlib versions are incompatible")
                          (t
                           (format nil "zlib error ~d" errno))))))
+
+(declaim (inline fill-from-stream))
+(defun fill-from-stream (buffer stream n)
+  (read-sequence buffer stream :end n))
+
+(declaim (inline empty-to-stream))
+(defun empty-to-stream (buffer stream n)
+  (write-sequence buffer stream :end n))

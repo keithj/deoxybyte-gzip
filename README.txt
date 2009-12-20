@@ -3,6 +3,11 @@ Introduction
 This system provides gzip and gunzip functions and a Gray-streams
 implementation, both built on a set of lower-level zlib functions.
 
+Also provided are functions for inflating and deflating to and from
+Lisp octet vectors and Lisp octet streams, which may be tuned using
+the Zlib tuning parameters described in the Zlib C function
+deflateInit2.
+
 Measuring execution times of the gz:gzip and gz:gunzip functions shows
 deoxybyte-gzip to be fractionally slower than gzip/gunzip. The
 Gray-streams implementation is up to 30% slower than gzip/gunzip.

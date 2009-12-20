@@ -34,6 +34,10 @@
    #:+z-buf-error+
    #:+z-version-error+
    #:+z-default-compression+
+   #:+z-filtered+
+   #:+z-huffman-only+
+   #:+z-default-strategy+
+   #:+z-deflated+
 
    #:z-stream
    #:next-in
@@ -53,10 +57,14 @@
    #:zlib-version
    #:deflate-init
    #:%deflate-init
+   #:deflate-init2
+   #:%deflate-init2
    #:%deflate
    #:deflate-end
    #:inflate-init
    #:%inflate-init
+   #:inflate-init2
+   #:%inflate-init2
    #:%inflate
    #:inflate-end
  
@@ -78,7 +86,11 @@
    #:gzputs
    #:gzerror
 
-   #:*c-error-number*))
+   #:*c-error-number*)
+  (:documentation "The zlib-ffi package provides a FFI for most of
+  Zlib. It may be used directly, but is intended for use via the
+  uk.co.deoxybyte-gzip package which wraps Zlib in a Lisp-style
+  interface."))
 
 (defpackage :uk.co.deoxybyte-gzip
   (:use #:common-lisp #:cffi #:zlib-ffi #:deoxybyte-io)
@@ -102,8 +114,13 @@
    #:gzip-output-stream
 
    ;; Functions
+   #:make-gzip-stream
    #:compress
    #:uncompress
+   #:deflate-stream
+   #:inflate-stream
+   #:deflate-vector
+   #:inflate-vector
 
    #:gz-open
    #:gz-close
@@ -118,11 +135,13 @@
    #:gzip-pathname
    #:gunzip-pathname
    #:gzip
-   #:gunzip
+   #:gunzip)
+  (:documentation "The deoxybyte-gzip system provides a Lisp interface
+to Zlib including a regular function interface to gzipped files, a
+Gray-streams interface to gzipped files and utility gzip/gunzip
+functions built on the former.
 
-   #:make-gzip-stream
-
-   #:deflate-stream
-   #:inflate-stream
-   #:deflate-vector
-   #:inflate-vector))
+Also provided are functions for inflating and deflating to and from
+Lisp octet vectors and Lisp octet streams, which may be tuned using
+the Zlib tuning parameters described in the Zlib C function
+deflateInit2."))
