@@ -42,6 +42,7 @@
                           :pathname "src/"
                           :components ((:file "package")
                                        (:file "zlib-ffi")
+                                       (:file "rfc1952")
                                        (:file "conditions")
                                        (:file "deoxybyte-gzip")
                                        (:file "gzip-stream")))

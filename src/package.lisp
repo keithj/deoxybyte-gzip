@@ -93,35 +93,15 @@
   interface."))
 
 (defpackage :uk.co.deoxybyte-gzip
-  (:use #:common-lisp #:cffi #:zlib-ffi #:deoxybyte-io)
+  (:use #:common-lisp #:cffi #:zlib-ffi #:deoxybyte-io #:deoxybyte-utilities)
   (:nicknames #:deoxybyte-gzip #:gz)
   (:import-from #:deoxybyte-utilities #:concat-strings #:txt)
   (:export
-   ;; Constants
-
-   ;; Conditions
+   ;; Zlib API
    #:zlib-error
    #:gz-io-error
 
-   ;; Macros
-   #:with-gz-file
-
-   ;; Classes
    #:gz
-
-   #:gzip-stream
-   #:gzip-input-stream
-   #:gzip-output-stream
-
-   ;; Functions
-   #:make-gzip-stream
-   #:compress
-   #:uncompress
-   #:deflate-stream
-   #:inflate-stream
-   #:deflate-vector
-   #:inflate-vector
-
    #:gz-open
    #:gz-close
    #:gz-eof-p
@@ -131,17 +111,76 @@
    #:gz-write-string
    #:gz-read-byte
    #:gz-write-byte
+   #:with-gz-file
+
+   #:compress
+   #:uncompress
+   #:deflate-stream
+   #:inflate-stream
+   #:deflate-vector
+   #:inflate-vector
 
    #:gzip-pathname
    #:gunzip-pathname
    #:gzip
-   #:gunzip)
+   #:gunzip
+
+   ;; Gray streams API
+   #:gzip-stream
+   #:gzip-input-stream
+   #:gzip-output-stream
+   #:make-gzip-stream
+   
+   ;; RFC1952 
+   #:+id1+
+   #:+id2+
+   #:+cm-deflate+
+   #:+flag-text+
+   #:+flag-fhcrc+
+   #:+flag-extra+
+   #:+flag-name+
+   #:+flag-comment+
+   #:+xfl-slowest+
+   #:+xfl-fastest+
+
+   #:+os-fat-filesystem+
+   #:+os-amiga+
+   #:+os-vms+
+   #:+os-unix+
+   #:+os-vm/cms+
+   #:+os-atari-tos+
+   #:+os-hpfs-filesystem+
+   #:+os-macintosh+
+   #:+os-z-system+
+   #:+os-cp/m+
+   #:+os-tops-20+
+   #:+os-ntfs-filesystem+
+   #:+os-qdos+
+   #:+os-acorn-riscos+
+   #:+os-unknown+
+
+   #:gz-member
+   #:make-gz-member
+   #:gz-member-id1
+   #:gz-member-id2
+   #:gz-member-cm
+   #:gz-member-flg
+   #:gz-member-mtime
+   #:gz-member-xfl
+   #:gz-member-os
+   #:gz-member-xlen
+   #:gz-member-isize
+   #:gz-member-crc32
+   #:gz-member-cdata)                                   
   (:documentation "The deoxybyte-gzip system provides a Lisp interface
 to Zlib including a regular function interface to gzipped files, a
 Gray-streams interface to gzipped files and utility gzip/gunzip
 functions built on the former.
 
-Also provided are functions for inflating and deflating to and from
-Lisp octet vectors and Lisp octet streams, which may be tuned using
-the Zlib tuning parameters described in the Zlib C function
-deflateInit2."))
+Functions are provided for inflating and deflating to and from Lisp
+octet vectors and Lisp octet streams, which may be tuned using the
+Zlib tuning parameters described in the Zlib C function deflateInit2.
+
+In addition, a basic implementation of the data structure described in
+RFC1952 is included, allowing a hybrid approach to reading gzip data,
+using native Lisp streams and Zlib inflate/deflate."))

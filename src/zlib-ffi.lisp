@@ -24,6 +24,7 @@
 
 (use-foreign-library zlib)
 
+;;; Zlib constants
 (defconstant +z-no-flush+ 0)
 (defconstant +z-sync-flush+ 2)
 (defconstant +z-full-flush+ 3)
@@ -48,10 +49,7 @@
 (defconstant +z-filtered+ 1)
 (defconstant +z-huffman-only+ 2)
 (defconstant +z-default-strategy+ 0)
-
-(defconstant +z-deflated+ 8)
-
-(defconstant +z-null+ 0)
+(defconstant +z-deflated+ 8 "Compression method")
 
 (defctype off-t #-x86-64 :uint32
                 #+x86-64 :uint64

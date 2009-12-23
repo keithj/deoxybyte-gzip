@@ -37,5 +37,3 @@
   (:report (lambda (condition stream)
              (format stream "gz error~@[: ~a~]." (text-of condition))))
   (:documentation "A condition raised when a gzip error occurs."))
-
-
