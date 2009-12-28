@@ -123,6 +123,9 @@
 (defcfun ("deflateEnd" deflate-end) :int
   (strm :pointer))
 
+(defcfun ("deflateReset" deflate-reset) :int
+  (strm :pointer))
+
 (defcfun ("inflateInit_" %inflate-init) :int
   (strm :pointer)
   (version :string)
@@ -150,6 +153,9 @@
 (defcfun ("inflateEnd" inflate-end) :int
   (strm :pointer))
 
+(defcfun ("inflateReset" inflate-reset) :int
+  (strm :pointer))
+
 (defcfun ("compress" %compress) :int
   (dest :pointer)
   (destlen :pointer)
@@ -168,6 +174,16 @@
   (destlen :pointer)
   (source :pointer)
   (sourcelen :long))
+
+(defcfun ("adler32" %adler32) :ulong
+  (adler :ulong)
+  (bytes :pointer)
+  (len :uint))
+
+(defcfun ("crc32" %crc32) :ulong
+  (crc :ulong)
+  (bytes :pointer)
+  (len :uint))
 
 (defcfun ("gzopen" gzopen) :pointer
   (path :string)

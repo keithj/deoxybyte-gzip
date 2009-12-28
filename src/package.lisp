@@ -51,7 +51,8 @@
    #:zfree
    #:opaque
    #:data-type
-   #:adler
+   #:%adler32
+   #:%crc32
    #:reserved
 
    #:zlib-version
@@ -61,13 +62,15 @@
    #:%deflate-init2
    #:%deflate
    #:deflate-end
+   #:deflate-reset
    #:inflate-init
    #:%inflate-init
    #:inflate-init2
    #:%inflate-init2
    #:%inflate
    #:inflate-end
- 
+   #:inflate-reset
+
    #:%compress
    #:%compress2
    #:%uncompress
@@ -119,6 +122,8 @@
    #:inflate-stream
    #:deflate-vector
    #:inflate-vector
+   #:adler32
+   #:crc32
 
    #:gzip-pathname
    #:gunzip-pathname

@@ -387,8 +387,8 @@ Key:
 
 - buffer-size (fixnum): The size of the internal buffer used by Zlib.
 - compression (fixnum): The Zlib compression factor (0-9, inclusive).
-- suppress-header (boolean): Exposes an undocumented feature of Zlib
-  whereby the compressed data may be produced without a Zlib header or
+- suppress-header (boolean): Exposes a feature of Zlib whereby the
+  compressed data may be produced without a Zlib header, trailer or
   checksum.
 - window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
 - mem-level (fixnum): The Zlib mem-level argument (1-9, inclusive).
@@ -422,8 +422,8 @@ Arguments:
 Key:
 
 - buffer-size (fixnum): The size of the internal buffer used by Zlib.
-- suppress-header (boolean): Exposes an undocumented feature of Zlib
-  whereby the compressed data may be produced without a Zlib header or
+- suppress-header (boolean): Exposes a feature of Zlib whereby the
+  compressed data may be produced without a Zlib header, trailer or
   checksum. This must be set T if the data were compressed with the
   header suppressed.
 - window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
@@ -443,7 +443,7 @@ Returns:
 (defun deflate-vector (source dest
                        &key (compression +z-default-compression+)
                        suppress-header (window-bits 15) (mem-level 8)
-                       (strategy :default-strategy))
+                       (strategy :default-strategy) (backoff 0))
   "Deflates vector SOURCE to vector DEST.
 
 Arguments:
@@ -469,12 +469,14 @@ Returns:
   compressed data in DEST)."
   (check-type source (vector (unsigned-byte 8)))
   (check-type dest (vector (unsigned-byte 8)))
-  (z-vector-operation :deflate source dest :compression compression
+  (z-vector-operation :deflate source dest backoff
+                      :compression compression
                       :suppress-header suppress-header
                       :window-bits window-bits :mem-level mem-level
                       :strategy strategy))
 
-(defun inflate-vector (source dest &key suppress-header (window-bits 15))
+(defun inflate-vector (source dest &key suppress-header (window-bits 15)
+                       (backoff 0))
   "Inflates vector SOURCE to vector DEST.
 
 Arguments:
@@ -498,8 +500,31 @@ Returns:
   decompressed data in DEST)."
   (check-type source (vector (unsigned-byte 8)))
   (check-type dest (vector (unsigned-byte 8)))
-  (z-vector-operation :inflate source dest :suppress-header suppress-header
+  (z-vector-operation :inflate source dest backoff
+                      :suppress-header suppress-header
                       :window-bits window-bits))
+
+(let ((init (%adler32 0 (null-pointer) 0)))
+  (defun adler32 (buffer &optional adler32)
+     (declare (optimize (speed 3)))
+     (declare (type (simple-array (unsigned-byte 8) (*)) buffer))
+     (let ((len (length buffer)))
+       (with-foreign-pointer (buf len)
+         (loop
+            for i from 0 below len
+            do (setf (mem-aref buf :uint8 i) (aref buffer i)))
+         (%adler32 (or adler32 init) buf len)))))
+
+(let ((init (%crc32 0 (null-pointer) 0)))
+  (defun crc32 (buffer &optional crc32)
+    (declare (optimize (speed 3)))
+    (declare (type (simple-array (unsigned-byte 8) (*)) buffer))
+    (let ((len (length buffer)))
+      (with-foreign-pointer (buf len)
+        (loop
+           for i from 0 below len
+           do (setf (mem-aref buf :uint8 i) (aref buffer i)))
+        (%crc32 (or crc32 init) buf len)))))
 
 (defun z-stream-open (operation &key (compression +z-default-compression+)
                       suppress-header (window-bits 15) (mem-level 8)
@@ -559,49 +584,51 @@ Z-STREAM and frees the Z-STREAM memory."
            t))
     (foreign-free z-stream)))
 
-(defun z-vector-operation (operation source dest &rest z-stream-args)
-    "Implements Zlib compression/decompression using inflate/deflate
-in a single pass over a Lisp vector. Raises an error if the
-compressed/decompressed data do not fit in DEST.
-
-Arguments:
-
-- operation (symbol): The operation type, either :inflate or :deflate .
-- source (stream): A Lisp octet vector.
-- dest (stream): A Lisp octet vector.
-
-Rest:
-- Keyword arguments passed to {defun z-stream-open} .
-  See {defun z-stream-open}
-
-Returns:
-- The DEST vector, containing compressed data.
-- Number of bytes read.
-- Number of bytes written (consequently the end position of the
-  compressed/decompressed data in DEST)."
+(defun z-vector-operation (operation source dest backoff &rest z-stream-args)
+  (assert (or (zerop backoff)
+              (and (plusp backoff) (< backoff (length dest)))) (dest backoff)
+              "Invalid BACKOFF ~a: expected a positive value < ~d"
+              backoff (length dest))
   (let ((zs (apply #'z-stream-open operation z-stream-args))
         (op-fn (ecase operation
                  (:inflate #'%inflate)
-                 (:deflate #'%deflate))))
+                 (:deflate #'%deflate)))
+        (reset-fn (ecase operation
+                    (:inflate #'inflate-reset)
+                    (:deflate #'deflate-reset))))
     (unwind-protect
          (with-foreign-slots ((avail-in next-in avail-out next-out
                                total-in total-out) zs z-stream)
            (with-pointer-to-vector-data (in source)
              (with-pointer-to-vector-data (out dest)
-               (setf next-in in
-                     avail-in (length source)
-                     next-out out
-                     avail-out (length dest))
-               (let ((x (funcall op-fn zs +z-finish+)))
-                 (cond ((= +z-stream-error+ x)
-                        (z-error x))
-                       ((= +z-ok+ x)
-                        (z-error +z-buf-error+
-                                 (txt "insufficient space in DEST for"
-                                      "compressed data")))
-                       (t
-                        (values dest total-in total-out)))))))
-           (z-stream-close zs operation))))
+               (loop
+                  with avail = (length source)
+                  do (cond ((plusp avail)
+                            (setf next-in in
+                                  avail-in avail
+                                  next-out out
+                                  avail-out (length dest))
+                            (let ((x (funcall op-fn zs +z-finish+)))
+                              (cond ((= +z-stream-error+ x)
+                                     (z-error x))
+                                    ((and (plusp backoff)
+                                          (= +z-ok+ x)) ; did not fit in dest
+                                     (decf avail backoff)
+                                     (funcall reset-fn zs))
+                                    ((= +z-ok+ x)
+                                     (z-error +z-buf-error+
+                                              (txt "insufficient space in DEST"
+                                                   "for compressed data")))
+                                    (t
+                                     (return (values dest
+                                                     total-in
+                                                     total-out))))))
+                           (t
+                            (z-error +z-buf-error+
+                                     (txt "insufficient space in DEST"
+                                          "for compressed data"
+                                          "after backoff"))))))))
+      (z-stream-close zs operation))))
 
 (defun z-stream-operation (operation source dest input-fn output-fn buffer-size
                            &rest z-stream-args)
