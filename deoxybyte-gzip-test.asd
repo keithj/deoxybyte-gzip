@@ -20,7 +20,8 @@
 (in-package :uk.co.deoxybyte-gzip-system)
 
 (defsystem deoxybyte-gzip-test
-  :depends-on (:deoxybyte-gzip)
+  :depends-on ((:version :lift "1.7.0")
+               :deoxybyte-gzip)
   :components ((:module :deoxybyte-gzip-test
                         :serial t
                         :pathname "src/test/"
