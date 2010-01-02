@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2009 Keith James. All rights reserved.
+;;; Copyright (C) 2009-2010 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-gzip.
 ;;;
@@ -59,24 +59,20 @@ Key:
                  (dest-start 0) (compression +z-default-compression+))
   "Compresses bytes in array SOURCE to array DEST, returning DEST and
 the compressed size in bytes."
-  (check-type source (vector (unsigned-byte 8)))
-  (check-type dest (vector (unsigned-byte 8)))
+  (check-type source (vector octet))
+  (check-type dest (vector octet))
   (let ((source-end (or source-end (length source))))
-    (assert (<= source-start source-end (length source))
-            (source source-start source-end)
-            (txt "Invalid (SOURCE-START SOURCE-END) (~d ~d): expected values"
-                 "less than the length of the SOURCE array (~d) satisfying"
-                 "(<= SOURCE-START SOURCE-END (length SOURCE)).")
-            source-start source-end (length source))
-    (assert (<= dest-start (length dest)) (dest dest-start)
-            (txt "Invalid DEST-START ~d: expected a value less than the"
-                 "length of the DEST array (~d).") dest-start (length dest))
-    (assert (and (integerp compression)
-                 (or (= +z-default-compression+ compression)
-                     (<= 0 compression 9))) (compression)
-                     (txt "Invalid COMPRESSION factor (~a):"
-                          "expected an integer between 0 and 9, inclusive.")
-                     compression)
+    (check-arguments (<= 0 source-start source-end (length source))
+                     (source-start source-end)
+                     "must satisfy (<= 0 source-start source-end ~d)"
+                     (length source))
+    (check-arguments (<= dest-start (length dest)) (dest-start)
+                     "must be <= ~d" (length dest))
+    (check-arguments (and (integerp compression)
+                          (or (= +z-default-compression+ compression)
+                              (<= 0 compression 9)))
+                     (compression)
+                     "must be an integer between 0 and 9, inclusive")
     (let ((source-len (- source-end source-start))
           (dest-len (- (length dest) dest-start)))
       (with-foreign-objects ((sbytes :uint8 source-len)
@@ -207,7 +203,7 @@ number of bytes read, which may be 0."
 number of bytes written. BUFFER must be a simple-array of
 unsigned-byte 8."
   (declare (optimize (speed 3)))
-  (declare (type (simple-array (unsigned-byte 8) (*)) buffer)
+  (declare (type simple-octet-vector buffer)
            (type fixnum n))
   (unless (gz-open-p gz)
     (gz-error nil "attempted to write to a closed stream"))
@@ -398,10 +394,8 @@ Key:
 Returns:
 - Number of bytes read.
 - Number of bytes written."
-  (assert (input-stream-p source) (source)
-          "Invalid SOURCE ~a: expected an input-stream." source)
-  (assert (output-stream-p dest) (dest)
-          "Invalid DEST ~a: expected an output-stream." dest)
+  (check-arguments (input-stream-p source) (source) "must bean input-stream")
+  (check-arguments (output-stream-p dest) (dest) "must be an output-stream")
   (z-stream-operation :deflate source dest
                       #'fill-from-stream #'empty-to-stream buffer-size
                       :compression compression
@@ -431,10 +425,8 @@ Key:
 Returns:
 - Number of bytes read.
 - Number of bytes written."
-  (assert (input-stream-p source) (source)
-          "Invalid SOURCE ~a: expected an input-stream." source)
-  (assert (output-stream-p dest) (dest)
-          "Invalid DEST ~a: expected an output-stream." dest)
+  (check-arguments (input-stream-p source) (source) "must be an input-stream")
+  (check-arguments (output-stream-p dest) (dest) "must be output-stream")
   (z-stream-operation :inflate source dest
                       #'fill-from-stream #'empty-to-stream buffer-size
                       :suppress-header suppress-header
@@ -467,8 +459,8 @@ Returns:
 - Number of bytes read.
 - Number of bytes written (consequently the end position of the
   compressed data in DEST)."
-  (check-type source (vector (unsigned-byte 8)))
-  (check-type dest (vector (unsigned-byte 8)))
+  (check-type source (vector octet))
+  (check-type dest (vector octet))
   (z-vector-operation :deflate source dest backoff
                       :compression compression
                       :suppress-header suppress-header
@@ -498,8 +490,8 @@ Returns:
 - Number of bytes read.
 - Number of bytes written (consequently the end position of the
   decompressed data in DEST)."
-  (check-type source (vector (unsigned-byte 8)))
-  (check-type dest (vector (unsigned-byte 8)))
+  (check-type source (vector octet))
+  (check-type dest (vector octet))
   (z-vector-operation :inflate source dest backoff
                       :suppress-header suppress-header
                       :window-bits window-bits))
@@ -507,7 +499,7 @@ Returns:
 (let ((init (%adler32 0 (null-pointer) 0)))
   (defun adler32 (buffer &optional adler32)
      (declare (optimize (speed 3)))
-     (declare (type (simple-array (unsigned-byte 8) (*)) buffer))
+     (declare (type simple-octet-vector buffer))
      (let ((len (length buffer)))
        (with-foreign-pointer (buf len)
          (loop
@@ -518,7 +510,7 @@ Returns:
 (let ((init (%crc32 0 (null-pointer) 0)))
   (defun crc32 (buffer &optional crc32)
     (declare (optimize (speed 3)))
-    (declare (type (simple-array (unsigned-byte 8) (*)) buffer))
+    (declare (type simple-octet-vector buffer))
     (let ((len (length buffer)))
       (with-foreign-pointer (buf len)
         (loop
@@ -530,22 +522,18 @@ Returns:
                       suppress-header (window-bits 15) (mem-level 8)
                       (strategy :default-strategy))
   "Returns a new Z-STREAM initialised for OPERATION (:inflate or :deflate)."
-  (assert (and (integerp compression)
-               (or (= +z-default-compression+ compression)
-                   (<= 0 compression 9))) (compression)
-                   (txt "Invalid COMPRESSION factor (~a):"
-                        "expected an integer between 0 and 9, inclusive.")
-                   compression)
-  (assert (and (integerp window-bits)
-               (<= 9 window-bits 15)) (window-bits)
-               (txt "Invalid WINDOW-BITS (~a): expected an integer between"
-                    "9 and 15, inclusive."))
-  (assert (and (integerp mem-level)
-               (<= 1 mem-level 9)) (mem-level)
-               (txt "Invalid MEM-LEVEL (~a): expected an integer between"
-                    "1 and 9, inclusive."))
+  (check-arguments (and (integerp compression)
+                        (or (= +z-default-compression+ compression)
+                            (<= 0 compression 9))) (compression)
+                            "must be an integer between 0 and 9, inclusive")
+  (check-arguments (and (integerp window-bits)
+                        (<= 9 window-bits 15)) (window-bits)
+                        "must be an integer between 9 and 15, inclusive")
+  (check-arguments (and (integerp mem-level)
+                        (<= 1 mem-level 9)) (mem-level)
+                        "must be an integer between 1 and 9, inclusive")
   (let ((wbits (if suppress-header
-                   (- window-bits)      ; undocumented Zlib feature
+                   (- window-bits)
                  window-bits))
         (strat (ecase strategy
                  (:filtered +z-filtered+)
@@ -585,10 +573,10 @@ Z-STREAM and frees the Z-STREAM memory."
     (foreign-free z-stream)))
 
 (defun z-vector-operation (operation source dest backoff &rest z-stream-args)
-  (assert (or (zerop backoff)
-              (and (plusp backoff) (< backoff (length dest)))) (dest backoff)
-              "Invalid BACKOFF ~a: expected a positive value < ~d"
-              backoff (length dest))
+  (check-arguments (or (zerop backoff)
+                       (and (plusp backoff) (< backoff (length dest))))
+                   (backoff)
+              "must be a positive value < ~d" (length dest))
   (let ((zs (apply #'z-stream-open operation z-stream-args))
         (op-fn (ecase operation
                  (:inflate #'%inflate)
@@ -596,23 +584,25 @@ Z-STREAM and frees the Z-STREAM memory."
         (reset-fn (ecase operation
                     (:inflate #'inflate-reset)
                     (:deflate #'deflate-reset))))
+    (declare (optimize (speed 3) (safety 1)))
     (unwind-protect
          (with-foreign-slots ((avail-in next-in avail-out next-out
                                total-in total-out) zs z-stream)
            (with-pointer-to-vector-data (in source)
              (with-pointer-to-vector-data (out dest)
                (loop
-                  with avail = (length source)
+                  with avail of-type array-index = (length source)
                   do (cond ((plusp avail)
                             (setf next-in in
                                   avail-in avail
                                   next-out out
                                   avail-out (length dest))
                             (let ((x (funcall op-fn zs +z-finish+)))
+                              (declare (type fixnum backoff x))
                               (cond ((= +z-stream-error+ x)
                                      (z-error x))
                                     ((and (plusp backoff)
-                                          (= +z-ok+ x)) ; did not fit in dest
+                                          (= +z-ok+ x)) ; Did not fit in dest
                                      (decf avail backoff)
                                      (funcall reset-fn zs))
                                     ((= +z-ok+ x)

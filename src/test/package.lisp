@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2009 Keith James. All rights reserved.
+;;; Copyright (C) 2009-2010 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-gzip.
 ;;;
@@ -18,6 +18,7 @@
 ;;;
 
 (defpackage :uk.co.deoxybyte-gzip-test
-  (:use #:common-lisp #:deoxybyte-io #:deoxybyte-gzip #:lift)
+  (:use #:common-lisp #:deoxybyte-io #:deoxybyte-utilities #:deoxybyte-gzip
+        #:lift)
   (:documentation "deoxybyte gzip tests.")
   (:export #:deoxybyte-gzip-tests))

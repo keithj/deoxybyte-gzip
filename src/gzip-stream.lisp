@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2009 Keith James. All rights reserved.
+;;; Copyright (C) 2009-2010 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-gzip.
 ;;;
@@ -32,7 +32,7 @@
        :documentation "The gzip handle.")
    (buffer :initarg :buffer
            :initform (make-array +byte-buffer-size+
-                                 :element-type '(unsigned-byte 8)
+                                 :element-type 'octet
                                  :initial-element (char-code #\.)))
    (open-stream-p :initform t))
   (:documentation "A gzip stream capable of reading or writing
@@ -59,7 +59,7 @@ stream."))
                               :compression compression)))
 
 (defmethod stream-element-type ((stream gzip-stream))
-  '(unsigned-byte 8))
+  'octet)
 
 (defmethod open-stream-p ((stream gzip-stream))
   (slot-value stream 'open-stream-p))
@@ -84,11 +84,10 @@ stream."))
 
 (defmethod stream-read-sequence ((stream gzip-input-stream) (seq sequence)
                                  &optional (start 0) end)
-  (macrolet ((define-copy-op (seq-type seq-accessor
-                                       &key (speed 1) (safety 2))
+  (macrolet ((define-copy-op (seq-type seq-accessor &key (speed 1) (safety 2))
                `(let ((seq-offset start))
                   (declare (optimize (speed ,speed) (safety ,safety)))
-                  (declare (type (simple-array (unsigned-byte 8) (*)) buffer)
+                  (declare (type simple-octet-vector buffer)
                            (type ,seq-type seq))
                   (loop
                      while (plusp num-buffered)
@@ -116,8 +115,8 @@ stream."))
           (declare (type fixnum num-to-write num-written)
                    (type byte-buffer-index num-buffered))
           (typecase seq
-            ((simple-array (unsigned-byte 8) (*))
-             (define-copy-op (simple-array (unsigned-byte 8) (*)) aref
+            (simple-octet-vector
+             (define-copy-op simple-octet-vector aref
                :speed 3 :safety 0))
             (simple-vector
              (define-copy-op simple-vector svref
@@ -145,7 +144,7 @@ stream."))
                                        &key (speed 1) (safety 2))
                `(let ((seq-offset start))
                   (declare (optimize (speed ,speed) (safety ,safety)))
-                  (declare (type (simple-array (unsigned-byte 8) (*)) buffer)
+                  (declare (type simple-octet-vector buffer)
                            (type ,seq-type seq))
                   (loop
                      while (plusp num-to-write)
@@ -172,8 +171,8 @@ stream."))
              (num-written 0))
         (declare (type fixnum num-to-write num-written))
         (typecase seq
-          ((simple-array (unsigned-byte 8) (*))
-           (define-copy-op (simple-array (unsigned-byte 8) (*)) aref
+          (simple-octet-vector
+           (define-copy-op simple-octet-vector aref
              :speed 3 :safety 0))
           (simple-vector
            (define-copy-op simple-vector svref

@@ -36,7 +36,8 @@
     :licence "GPL v3"
     :in-order-to ((test-op (load-op :deoxybyte-gzip :deoxybyte-gzip-test)))
     :depends-on ((:version :cffi "0.10.3")
-                 (:version :deoxybyte-io "0.5.3"))
+                 (:version :deoxybyte-io "0.5.6")
+                 (:version :deoxybyte-utilities "0.5.6"))
     :components ((:module :deoxybyte-gzip
                           :serial t
                           :pathname "src/"

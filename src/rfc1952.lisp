@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2009 Keith James. All rights reserved.
+;;; Copyright (C) 2009-2010 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-gzip.
 ;;;
@@ -64,5 +64,4 @@
   (xlen 0 :type uint16)
   (isize 0 :type uint32)
   (crc32 0 :type uint32)
-  (cdata (make-array 0 :element-type '(unsigned-byte 8))
-         :type (simple-array (unsigned-byte 8) (*))))
+  (cdata (make-array 0 :element-type 'octet) :type simple-octet-vector))

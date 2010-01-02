@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2009 Keith James. All rights reserved.
+;;; Copyright (C) 2009-2010 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-gzip.
 ;;;
@@ -20,12 +20,10 @@
 (in-package :uk.co.deoxybyte-gzip-test)
 
 (defun binary-file= (x y)
-  (with-open-file (s1 x :element-type '(unsigned-byte 8))
-    (with-open-file (s2 y :element-type '(unsigned-byte 8))
-      (let ((v1 (make-array (file-length s1)
-                            :element-type '(unsigned-byte 8)))
-            (v2 (make-array (file-length s2)
-                            :element-type '(unsigned-byte 8))))
+  (with-open-file (s1 x :element-type 'octet)
+    (with-open-file (s2 y :element-type 'octet)
+      (let ((v1 (make-array (file-length s1) :element-type 'octet))
+            (v2 (make-array (file-length s2) :element-type 'octet)))
         (read-sequence v1 s1)
         (read-sequence v2 s2)
         (equalp v1 v2)))))
@@ -56,9 +54,8 @@
 (addtest (deoxybyte-gzip-tests) gzip-input-stream/1
   (let ((in (merge-pathnames "data/lorem.txt.gz"))
         (out (merge-pathnames "data/lorem-test.txt"))
-        (seq (make-array 4096 :element-type '(unsigned-byte 8))))
-    (with-open-file (stream out :direction :output
-                            :element-type '(unsigned-byte 8))
+        (seq (make-array 4096 :element-type 'octet)))
+    (with-open-file (stream out :direction :output :element-type 'octet)
       (loop
          with gz = (make-gzip-stream in)
          for n = (stream-read-sequence gz seq)
@@ -74,8 +71,8 @@
 (addtest (deoxybyte-gzip-tests) gzip-output-stream/1
   (let ((in (merge-pathnames "data/lorem.txt"))
         (out (merge-pathnames "data/lorem-test.txt.gz"))
-        (seq (make-array 4096 :element-type '(unsigned-byte 8))))
-    (with-open-file (stream in :element-type '(unsigned-byte 8))
+        (seq (make-array 4096 :element-type 'octet)))
+    (with-open-file (stream in :element-type 'octet)
       (loop
          with gz = (make-gzip-stream out :direction :output)
          for n = (read-sequence seq stream)
@@ -91,9 +88,9 @@
 ;; TODO -- factor the common parts out of these tests
 (addtest (deoxybyte-gzip-tests) compress/1
   (let* ((in (merge-pathnames "data/lorem.txt"))
-         (data (make-array 1024 :element-type '(unsigned-byte 8)))
+         (data (make-array 1024 :element-type 'octet))
          (len (+ (ceiling (+ 1024 (/ 1024 1000))) 12))
-         (comp (make-array len :element-type '(unsigned-byte 8))))
+         (comp (make-array len :element-type 'octet)))
     (with-open-file (stream in)
       (loop
          for i from 0 below (length data)
@@ -111,10 +108,10 @@
 
 (addtest (deoxybyte-gzip-tests) uncompress/1
   (let* ((in (merge-pathnames "data/lorem.txt"))
-         (data (make-array 1024 :element-type '(unsigned-byte 8)))
+         (data (make-array 1024 :element-type 'octet))
          (len (+ (ceiling (+ 1024 (/ 1024 1000))) 12))
-         (comp (make-array len :element-type '(unsigned-byte 8)))
-         (uncomp (make-array len :element-type '(unsigned-byte 8))))
+         (comp (make-array len :element-type 'octet))
+         (uncomp (make-array len :element-type 'octet)))
     (with-open-file (stream in)
       (loop
          for i from 0 below (length data)
@@ -132,10 +129,10 @@
 
 (addtest (deoxybyte-gzip-tests) compress/uncompress/1
   (let* ((in (merge-pathnames "data/lorem.txt"))
-         (data (make-array 1024 :element-type '(unsigned-byte 8)))
+         (data (make-array 1024 :element-type 'octet))
          (len (+ (ceiling (+ 1024 (/ 1024 1000))) 12))
-         (comp (make-array len :element-type '(unsigned-byte 8)))
-         (uncomp (make-array len :element-type '(unsigned-byte 8))))
+         (comp (make-array len :element-type 'octet))
+         (uncomp (make-array len :element-type 'octet)))
     (with-open-file (stream in)
       (loop
          for i from 0 below (length data)
@@ -146,10 +143,10 @@
 
 (addtest (deoxybyte-gzip-tests) compress/uncompress/2
   (let* ((in (merge-pathnames "data/lorem.txt"))
-         (data (make-array 1024 :element-type '(unsigned-byte 8)))
+         (data (make-array 1024 :element-type 'octet))
          (len (+ (ceiling (+ 1024 (/ 1024 1000))) 12))
-         (comp (make-array len :element-type '(unsigned-byte 8)))
-         (uncomp (make-array 1024 :element-type '(unsigned-byte 8))))
+         (comp (make-array len :element-type 'octet))
+         (uncomp (make-array 1024 :element-type 'octet)))
     (with-open-file (stream in)
       (loop
          for i from 0 below (length data)
@@ -173,9 +170,8 @@
    (let ((in (merge-pathnames "data/lorem.txt"))
          (out (merge-pathnames "data/lorem.tmp.dfl"))
          (test (merge-pathnames "data/lorem.txt.dfl")))
-     (with-open-file (s1 in :element-type '(unsigned-byte 8))
-       (with-open-file (s2 out :element-type '(unsigned-byte 8)
-                           :direction :output
+     (with-open-file (s1 in :element-type 'octet)
+       (with-open-file (s2 out :element-type 'octet :direction :output
                            :if-exists :supersede)
          (deflate-stream s1 s2)))
      (ensure (binary-file= out test))
@@ -185,9 +181,8 @@
    (let ((in (merge-pathnames "data/lorem.txt.dfl"))
          (out (merge-pathnames "data/lorem.tmp.txt"))
          (test (merge-pathnames "data/lorem.txt")))
-     (with-open-file (s1 in :element-type '(unsigned-byte 8))
-       (with-open-file (s2 out :element-type '(unsigned-byte 8)
-                           :direction :output
+     (with-open-file (s1 in :element-type 'octet)
+       (with-open-file (s2 out :element-type 'octet :direction :output
                            :if-exists :supersede)
          (inflate-stream s1 s2)))
      (ensure (binary-file= out test))
