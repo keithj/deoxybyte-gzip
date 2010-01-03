@@ -176,7 +176,8 @@
    #:gz-member-xlen
    #:gz-member-isize
    #:gz-member-crc32
-   #:gz-member-cdata)                                   
+   #:gz-member-cdata
+   #:gz-member-cend)                                   
   (:documentation "The deoxybyte-gzip system provides a Lisp interface
 to Zlib including a regular function interface to gzipped files, a
 Gray-streams interface to gzipped files and utility gzip/gunzip

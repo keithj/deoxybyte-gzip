@@ -53,7 +53,21 @@
 (defconstant +os-unknown+ 255)
 
 (defstruct gz-member
-  "A gzip member as defined by RFC1952."
+  "A gzip member as defined by RFC1952.
+
+- id1: IDentification 1.
+- id2: IDentification 2.
+- cm: Compression Method.
+- flg: FLaGs.
+- mtime: Modification TIME.
+- xfl: eXtra FLags.
+- os: Operating System.
+- xlen: eXtra LENgth.
+- isize: Input SIZE.
+- crc32: CRC-32.
+- cdata: Compressed DATA.
+- cend: Compressed data End. The length of compressed data in cdata,
+  starting at index 0, if cdata is only partially filled."
   (id1 +id1+ :type uint8 :read-only t)
   (id2 +id2+ :type uint8 :read-only t)
   (cm +cm-deflate+ :type uint8 :read-only t)
@@ -64,4 +78,5 @@
   (xlen 0 :type uint16)
   (isize 0 :type uint32)
   (crc32 0 :type uint32)
-  (cdata (make-array 0 :element-type 'octet) :type simple-octet-vector))
+  (cdata (make-array 0 :element-type 'octet) :type simple-octet-vector)
+  (cend 0 :type uint32))

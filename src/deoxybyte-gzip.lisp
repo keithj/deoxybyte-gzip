@@ -497,26 +497,32 @@ Returns:
                       :window-bits window-bits))
 
 (let ((init (%adler32 0 (null-pointer) 0)))
-  (defun adler32 (buffer &optional adler32)
+  (defun adler32 (buffer &key (start 0) end adler32)
      (declare (optimize (speed 3)))
      (declare (type simple-octet-vector buffer))
-     (let ((len (length buffer)))
-       (with-foreign-pointer (buf len)
-         (loop
-            for i from 0 below len
-            do (setf (mem-aref buf :uint8 i) (aref buffer i)))
-         (%adler32 (or adler32 init) buf len)))))
+     (let ((end (or end (length buffer))))
+       (declare (type vector-index start end))
+       (let ((len (- end start)))
+         (with-foreign-pointer (buf len)
+           (loop
+              for i from start below end
+              for j from 0 below len
+              do (setf (mem-aref buf :uint8 j) (aref buffer i)))
+           (%adler32 (or adler32 init) buf len))))))
 
 (let ((init (%crc32 0 (null-pointer) 0)))
-  (defun crc32 (buffer &optional crc32)
+  (defun crc32 (buffer &key (start 0) end crc32)
     (declare (optimize (speed 3)))
     (declare (type simple-octet-vector buffer))
-    (let ((len (length buffer)))
-      (with-foreign-pointer (buf len)
-        (loop
-           for i from 0 below len
-           do (setf (mem-aref buf :uint8 i) (aref buffer i)))
-        (%crc32 (or crc32 init) buf len)))))
+    (let ((end (or end (length buffer))))
+       (declare (type vector-index start end))
+       (let ((len (- end start)))
+         (with-foreign-pointer (buf len)
+           (loop
+              for i from start below end
+              for j from 0 below len
+              do (setf (mem-aref buf :uint8 j) (aref buffer i)))
+           (%crc32 (or crc32 init) buf len))))))
 
 (defun z-stream-open (operation &key (compression +z-default-compression+)
                       suppress-header (window-bits 15) (mem-level 8)
