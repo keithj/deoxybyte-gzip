@@ -295,7 +295,8 @@ bytes decompressed."
       (with-gz-file (gz in-filespec)
         (let ((x (1- (expt 2 16))))
           (loop
-             with buffer = (make-array x :element-type '(unsigned-byte 8))
+             with buffer = (make-array x :element-type 'octet
+                                       :initial-element 0)
              for n = (gz-read gz buffer x)
              sum n into num-bytes
              do (write-sequence buffer stream :end n)
@@ -311,11 +312,12 @@ bytes compressed."
             (txt "Unable to make implicit output filename from ~s,"
                  "please specify OUT-FILESPEC explicitly.")
             in-filespec)
-    (with-open-file (stream in-filespec :element-type '(unsigned-byte 8))
+    (with-open-file (stream in-filespec :element-type 'octet)
       (with-gz-file (gz out-filespec :direction :output)
         (let ((x (1- (expt 2 16))))
           (loop
-             with buffer = (make-array x :element-type '(unsigned-byte 8))
+             with buffer = (make-array x :element-type 'octet
+                                       :initial-element 0)
              for n = (read-sequence buffer stream)
              sum n into num-bytes
              while (plusp n)
@@ -579,6 +581,9 @@ Z-STREAM and frees the Z-STREAM memory."
     (foreign-free z-stream)))
 
 (defun z-vector-operation (operation source dest backoff &rest z-stream-args)
+  (declare (optimize (speed 3) (safety 1)))
+  (declare (type simple-octet-vector source dest)
+           (type vector-index backoff))
   (check-arguments (or (zerop backoff)
                        (and (plusp backoff) (< backoff (length dest))))
                    (backoff)
@@ -590,13 +595,17 @@ Z-STREAM and frees the Z-STREAM memory."
         (reset-fn (ecase operation
                     (:inflate #'inflate-reset)
                     (:deflate #'deflate-reset))))
-    (declare (optimize (speed 3) (safety 1)))
-    (unwind-protect
-         (with-foreign-slots ((avail-in next-in avail-out next-out
-                               total-in total-out) zs z-stream)
-           (with-pointer-to-vector-data (in source)
-             (with-pointer-to-vector-data (out dest)
-               (loop
+    (let ((source-buffer (replace (make-shareable-byte-vector
+                                   (length source)) source))
+          (dest-buffer (replace (make-shareable-byte-vector
+                                 (length dest)) dest)))
+      (unwind-protect
+          (with-foreign-slots ((avail-in next-in avail-out next-out
+                                total-in total-out) zs z-stream)
+            (with-pointer-to-vector-data (in source-buffer)
+              (with-pointer-to-vector-data (out dest-buffer)
+                (declare (type vector-index total-in total-out))
+                (loop
                   with avail of-type array-index = (length source)
                   do (cond ((plusp avail)
                             (setf next-in in
@@ -616,7 +625,7 @@ Z-STREAM and frees the Z-STREAM memory."
                                               (txt "insufficient space in DEST"
                                                    "for compressed data")))
                                     (t
-                                     (return (values dest
+                                     (return (values (replace dest dest-buffer)
                                                      total-in
                                                      total-out))))))
                            (t
@@ -624,7 +633,7 @@ Z-STREAM and frees the Z-STREAM memory."
                                      (txt "insufficient space in DEST"
                                           "for compressed data"
                                           "after backoff"))))))))
-      (z-stream-close zs operation))))
+        (z-stream-close zs operation)))))
 
 (defun z-stream-operation (operation source dest input-fn output-fn buffer-size
                            &rest z-stream-args)
@@ -669,6 +678,7 @@ Returns:
                         (when (zerop avail-in)
                           (let ((num-read (funcall input-fn in-buffer
                                                    source buffer-size)))
+                            (declare (type vector-index num-read))
                             (when (plusp num-read)
                               (setf next-in in
                                     avail-in num-read))))
@@ -696,7 +706,8 @@ Returns:
                                  (when (= +z-stream-error+ x)
                                    (z-error x))
                                  (setf out-full (write-from-zs)))))
-                    finally (return (values total-in total-out)))))))
+                    finally (progn
+                              (return (values total-in total-out))))))))
       (z-stream-close zs operation))))
 
 (defun z-error (errno &optional message)
