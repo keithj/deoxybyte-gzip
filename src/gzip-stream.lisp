@@ -82,8 +82,43 @@ stream."))
 (defmethod stream-clear-input ((stream gzip-input-stream))
   nil)
 
-(defmethod stream-read-sequence ((stream gzip-input-stream) (seq sequence)
-                                 &optional (start 0) end)
+(defmethod stream-clear-output ((stream gzip-output-stream))
+  nil)
+
+(defmethod stream-finish-output ((stream gzip-output-stream))
+  (gz-flush (slot-value stream 'gz) :finish))
+
+(defmethod stream-force-output ((stream gzip-output-stream))
+  (gz-flush (slot-value stream 'gz) :flush-full))
+
+(defmethod stream-read-byte ((stream gzip-input-stream))
+  (gz-read-byte (slot-value stream 'gz)))
+
+#+(or :sbcl :ccl)
+(defmethod stream-read-sequence ((stream gzip-output-stream)
+                                 (seq sequence) &optional (start 0) end)
+  (%stream-read-sequence stream seq start end))
+
+#+:lispworks
+(defmethod stream-read-sequence ((stream gzip-output-stream)
+                                 (seq sequence) start end)
+  (%stream-read-sequence stream seq start end))
+
+(defmethod stream-write-byte ((stream gzip-output-stream) (byte fixnum))
+  (gz-write-byte (slot-value stream 'gz) byte))
+
+#+(or :sbcl :ccl)
+(defmethod stream-write-sequence ((stream gzip-output-stream)
+                                  (seq sequence) &optional (start 0) end)
+  (%stream-write-sequence stream seq start end))
+
+#+:lispworks
+(defmethod stream-write-sequence ((stream gzip-output-stream)
+                                 (seq sequence) start end)
+  (%stream-write-sequence stream seq start end))
+
+(declaim (inline %stream-read-sequence))
+(defun %stream-read-sequence (stream seq &optional (start 0) end)
   (macrolet ((define-copy-op (seq-type seq-accessor &key (speed 1) (safety 2))
                `(let ((seq-offset start))
                   (declare (optimize (speed ,speed) (safety ,safety)))
@@ -129,19 +164,9 @@ stream."))
             (t
              (define-copy-op sequence elt))))))))
 
-(defmethod stream-clear-output ((stream gzip-output-stream))
-  nil)
-
-(defmethod stream-finish-output ((stream gzip-output-stream))
-  (gz-flush (slot-value stream 'gz) :finish))
-
-(defmethod stream-force-output ((stream gzip-output-stream))
-  (gz-flush (slot-value stream 'gz) :flush-full))
-
-(defmethod stream-write-sequence ((stream gzip-output-stream)
-                                  (seq sequence) &optional (start 0) end)
-  (macrolet ((define-copy-op (seq-type seq-accessor
-                                       &key (speed 1) (safety 2))
+(declaim (inline %stream-write-sequence))
+(defun %stream-write-sequence (stream seq &optional (start 0) end)
+  (macrolet ((define-copy-op (seq-type seq-accessor &key (speed 1) (safety 2))
                `(let ((seq-offset start))
                   (declare (optimize (speed ,speed) (safety ,safety)))
                   (declare (type simple-octet-vector buffer)
@@ -184,9 +209,3 @@ stream."))
              :speed 3 :safety 0))
           (t
            (define-copy-op sequence elt)))))))
-
-(defmethod stream-read-byte ((stream gzip-input-stream))
-  (gz-read-byte (slot-value stream 'gz)))
-
-(defmethod stream-write-byte ((stream gzip-output-stream) (byte fixnum))
-  (gz-write-byte (slot-value stream 'gz) byte))
