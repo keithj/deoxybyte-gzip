@@ -58,7 +58,9 @@
     (with-open-file (stream out :direction :output :element-type 'octet)
       (loop
          with gz = (make-gzip-stream in)
-         for n = (stream-read-sequence gz seq)
+         for n = (stream-read-sequence gz seq 0 4096) ; use start/end
+                                                      ; args for
+                                                      ; Lispworks
          sum n into num-bytes
          while (plusp n)
          do (write-sequence seq stream :end n)
@@ -187,3 +189,19 @@
          (inflate-stream s1 s2)))
      (ensure (binary-file= out test))
      (delete-file out)))
+
+(addtest (deoxybyte-gzip-tests) deflate/inflate-vector/1
+  (let ((in (make-array 1024 :element-type 'octet
+                        :initial-contents (loop
+                                             repeat 1024
+                                             collect (random 255))))
+         (out (make-array 1384 :element-type 'octet)))
+    (multiple-value-bind (vec count)
+        (deflate-vector in out)
+      (ensure (equalp out vec))
+      (ensure (= 1024 count)))
+    (multiple-value-bind (vec compressed count)
+        (inflate-vector out (make-array 1024 :element-type 'octet
+                                        :initial-element 0))
+      (ensure (equalp in vec))
+      (ensure (equalp 1024 count)))))
