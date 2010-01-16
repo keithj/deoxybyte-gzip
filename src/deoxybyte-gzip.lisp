@@ -95,18 +95,15 @@ the compressed size in bytes."
 (defun uncompress (source dest &key (source-start 0) source-end (dest-start 0))
   "Uncompresses bytes in array SOURCE to array DEST, returning DEST
 and the compressed size in bytes."
-  (check-type source (vector (unsigned-byte 8)))
-  (check-type dest (vector (unsigned-byte 8)))
+  (check-type source (vector octet))
+  (check-type dest (vector octet))
   (let ((source-end (or source-end (length source))))
-    (assert (<= source-start source-end (length source))
-            (source source-start source-end)
-            (txt "Invalid (SOURCE-START SOURCE-END) (~d ~d): expected values"
-                 "less than the length of the SOURCE array (~d) satisfying"
-                 "(<= SOURCE-START SOURCE-END (length SOURCE)).")
-            source-start source-end (length source))
-    (assert (<= dest-start (length dest)) (dest dest-start)
-            (txt "Invalid DEST-START ~d: expected a value less than the"
-                 "length of the DEST array (~d).") dest-start (length dest))
+    (check-arguments (<= 0 source-start source-end (length source))
+                     (source-start source-end)
+                     "must satisfy (<= 0 source-start source-end ~d)"
+                     (length source))
+    (check-arguments (<= dest-start (length dest)) (dest-start)
+                     "must be <= ~d" (length dest))
     (let* ((source-len (- source-end source-start))
            (dest-len (- (length dest) dest-start)))
       (with-foreign-objects ((sbytes :uint8 source-len)
@@ -140,12 +137,11 @@ Key:
   defaulting to :input .
 - compression (integer): The zlib compression level, if
   compressing. An integer between 0 and 9, inclusive."
-  (assert (and (integerp compression)
-               (or (= +z-default-compression+ compression)
-                   (<= 0 compression 9))) (compression)
-                   (txt "Invalid COMPRESSION factor (~a):"
-                        "expected an integer between 0 and 9, inclusive.")
-                   compression)
+  (check-arguments (and (integerp compression)
+                        (or (= +z-default-compression+ compression)
+                            (<= 0 compression 9)))
+                   (compression)
+                   "must be an integer between 0 and 9, inclusive")
   (let ((gz (make-gz :ptr (gzopen (pathstring filespec)
                                   (format nil "~c~@[~d~]"
                                           (ecase direction
