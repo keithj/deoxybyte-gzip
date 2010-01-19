@@ -598,9 +598,9 @@ Z-STREAM and frees the Z-STREAM memory."
       (unwind-protect
           (with-foreign-slots ((avail-in next-in avail-out next-out
                                 total-in total-out) zs z-stream)
+            (declare (type vector-index total-in total-out))
             (with-pointer-to-vector-data (in source-buffer)
               (with-pointer-to-vector-data (out dest-buffer)
-                (declare (type vector-index total-in total-out))
                 (loop
                   with avail of-type array-index = (length source)
                   do (cond ((plusp avail)

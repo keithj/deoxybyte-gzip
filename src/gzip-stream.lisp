@@ -95,9 +95,14 @@ stream."))
   (gz-read-byte (slot-value stream 'gz)))
 
 #+(or :sbcl :ccl)
-(defmethod stream-read-sequence ((stream gzip-output-stream)
+(defmethod stream-read-sequence ((stream gzip-input-stream)
                                  (seq sequence) &optional (start 0) end)
   (%stream-read-sequence stream seq start end))
+
+#+:ccl
+(defmethod stream-read-vector ((stream gzip-input-stream)
+                               (vec vector) &optional (start 0) end)
+  (%stream-read-sequence stream vec start end))
 
 #+:lispworks
 (defmethod stream-read-sequence ((stream gzip-output-stream)
@@ -111,6 +116,11 @@ stream."))
 (defmethod stream-write-sequence ((stream gzip-output-stream)
                                   (seq sequence) &optional (start 0) end)
   (%stream-write-sequence stream seq start end))
+
+#+:ccl
+(defmethod stream-write-vector ((stream gzip-output-stream)
+                                (vec vector) &optional (start 0) end)
+  (%stream-write-sequence stream vec start end))
 
 #+:lispworks
 (defmethod stream-write-sequence ((stream gzip-output-stream)
@@ -140,29 +150,29 @@ stream."))
                                                     (min num-to-write
                                                          +byte-buffer-size+)))))
                      finally (return num-written)))))
-    (let ((end (or end (length seq))))
-      (with-slots (gz buffer)
-          stream
-        (let* ((num-to-write (- end start))
-               (num-buffered (gz-read gz buffer (min num-to-write
-                                                     +byte-buffer-size+)))
-               (num-written 0))
-          (declare (type fixnum num-to-write num-written)
-                   (type byte-buffer-index num-buffered))
-          (typecase seq
-            (simple-octet-vector
-             (define-copy-op simple-octet-vector aref
-               :speed 3 :safety 0))
-            (simple-vector
-             (define-copy-op simple-vector svref
-               :speed 3 :safety 0))
-            ((simple-array * (*))
-             (define-copy-op (simple-array * (*)) aref))
-            (list
-             (define-copy-op list elt
-               :speed 3 :safety 0))
-            (t
-             (define-copy-op sequence elt))))))))
+    (let ((end (or end (length seq)))
+          (gz (slot-value stream 'gz)) 
+          (buffer (slot-value stream 'buffer))) ; CCL 1.4 with-slots bug?
+      (let* ((num-to-write (- end start))
+             (num-buffered (gz-read gz buffer (min num-to-write
+                                                   +byte-buffer-size+)))
+             (num-written 0))
+        (declare (type fixnum num-to-write num-written)
+                 (type byte-buffer-index num-buffered))
+        (typecase seq
+          (simple-octet-vector
+           (define-copy-op simple-octet-vector aref
+             :speed 3 :safety 0))
+          (simple-vector
+           (define-copy-op simple-vector svref
+             :speed 3 :safety 0))
+          ((simple-array * (*))
+           (define-copy-op (simple-array * (*)) aref))
+          (list
+           (define-copy-op list elt
+             :speed 3 :safety 0))
+          (t
+           (define-copy-op sequence elt)))))))
 
 (declaim (inline %stream-write-sequence))
 (defun %stream-write-sequence (stream seq &optional (start 0) end)
@@ -189,11 +199,11 @@ stream."))
                               (setf num-to-write 0)
                             (decf num-to-write n)))
                      finally (return num-written)))))
-    (with-slots (gz buffer)
-        stream
-      (let* ((end (or end (length seq)))
-             (num-to-write (- end start))
-             (num-written 0))
+    (let ((end (or end (length seq)))
+          (gz (slot-value stream 'gz))
+          (buffer (slot-value stream 'buffer)))  ; CCL 1.4 with-slots bug?
+      (let ((num-to-write (- end start))
+            (num-written 0))
         (declare (type fixnum num-to-write num-written))
         (typecase seq
           (simple-octet-vector
