@@ -19,15 +19,9 @@
 
 (in-package :cl-user)
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (when (asdf:find-system :deoxybyte-systems nil)
-    (asdf:operate 'asdf:load-op :deoxybyte-systems)))
+(asdf:load-system :deoxybyte-systems)
 
-(defpackage :uk.co.deoxybyte-gzip-system
-  (:use :common-lisp :asdf)
-  (:import-from :deoxybyte-systems :lift-test-config :cldoc-config))
-
-(in-package :uk.co.deoxybyte-gzip-system)
+(in-package :uk.co.deoxybyte-systems)
 
 (defsystem deoxybyte-gzip
     :name "deoxybyte-gzip"
@@ -48,7 +42,7 @@
                                        (:file "deoxybyte-gzip")
                                        (:file "gzip-stream")))
                  (:lift-test-config :lift-tests
-                                    :pathname "deoxybyte-gzip-test.config"
+                                    :pathname "deoxybyte-gzip-test"
                                     :target-system :deoxybyte-gzip)
                  (:cldoc-config :cldoc-documentation
                                 :pathname "doc/html/"

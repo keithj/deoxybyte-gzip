@@ -17,13 +17,11 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(in-package :uk.co.deoxybyte-gzip-system)
-
 (defsystem deoxybyte-gzip-test
   :depends-on ((:version :lift "1.7.0")
                :deoxybyte-gzip)
   :components ((:module :deoxybyte-gzip-test
                         :serial t
-                        :pathname "src/test/"
+                        :pathname "test/"
                         :components ((:file "package")
                                      (:file "deoxybyte-gzip-test")))))
