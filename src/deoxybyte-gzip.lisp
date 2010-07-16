@@ -149,8 +149,8 @@ Key:
                                             (:output #\w)) compression))
                      :open-p t)))
     (if (null-pointer-p (gz-ptr gz))
-        (gz-error t (format nil "failed to open ~a (~a)"
-                            filespec (gz-error-message gz)))
+        (gz-error gz t (format nil "failed to open ~a (~a)"
+                               filespec (gz-error-message gz)))
       gz)))
 
 (defun gz-close (gz)
@@ -158,8 +158,8 @@ Key:
   (when (gz-open-p gz)
     (setf (gz-open-p gz) nil)
     (or (= +z-ok+ (gzclose (gz-ptr gz)))
-        (gz-error t (format nil "failed to close cleanly (~a)"
-                            (gz-error-message gz))))))
+        (gz-error gz t (format nil "failed to close cleanly (~a)"
+                               (gz-error-message gz))))))
 
 (defun gz-eof-p (gz)
   "Returns T if GZ has reached EOF, or NIL otherwise."
@@ -178,7 +178,7 @@ Key:
   "Reads up to N bytes from GZ into octet vector BUFFER. Returns the
 number of bytes read, which may be 0."
   (cond ((not (gz-open-p gz))
-         (gz-error nil "attempted to read from a closed stream"))
+         (gz-error gz nil "attempted to read from a closed stream"))
         ((gz-eof-p gz)
          0)
         (t
@@ -187,7 +187,7 @@ number of bytes read, which may be 0."
              (cond ((zerop x)
                     0)
                    ((= -1 x)
-                    (gz-error t t))
+                    (gz-error gz t t))
                    (t
                     (loop
                        for i from 0 below x
@@ -202,27 +202,27 @@ unsigned-byte 8."
   (declare (type simple-octet-vector buffer)
            (type fixnum n))
   (unless (gz-open-p gz)
-    (gz-error nil "attempted to write to a closed stream"))
+    (gz-error gz nil "attempted to write to a closed stream"))
   (with-foreign-pointer (buf (length buffer))
     (loop
        for i from 0 below n
        do (setf (mem-aref buf :uint8 i) (aref buffer i)))
     (let ((x (the fixnum (gzwrite (gz-ptr gz) buf n))))
       (if (zerop x)
-          (gz-error t t)
+          (gz-error gz t t)
         x))))
 
 (defun gz-read-string (gz str n)
   "Reads up to N characters from GZ into string STR. Returns the
 number of characters read, which may be 0."
   (cond ((not (gz-open-p gz))
-         (gz-error nil "attempted to read from a closed stream"))
+         (gz-error gz nil "attempted to read from a closed stream"))
         ((gz-eof-p gz)
          0)
         (t
          (let ((x (gzgets (gz-ptr gz) str (1+ n))))
            (if (= -1 x)
-               (gz-error t t)
+               (gz-error gz t t)
              x)))))
 
 (defun gz-write-string (gz buffer)
@@ -232,28 +232,28 @@ number of characters written."
     (gz-error nil "attempted to write to a closed stream"))
   (let ((n (gzputs (gz-ptr gz) buffer)))
     (if (= -1 n)
-        (gz-error t t)
+        (gz-error gz t t)
       n)))
 
 (defun gz-read-byte (gz)
   "Returns a byte read from GZ, or :eof ."
   (cond ((not (gz-open-p gz))
-         (gz-error nil "attempted to read from a closed stream"))
+         (gz-error gz nil "attempted to read from a closed stream"))
         ((gz-eof-p gz)
          :eof)
         (t
          (let ((b (gzgetc (gz-ptr gz))))
            (if (= -1 b)
-               (gz-error t t)
+               (gz-error gz t t)
              b)))))
 
 (defun gz-write-byte (gz byte)
   "Writes BYTE to GZ and returns BYTE."
   (unless (gz-open-p gz)
-    (gz-error nil "attempted to write to a closed stream"))
+    (gz-error gz nil "attempted to write to a closed stream"))
   (let ((b (gzputc (gz-ptr gz) byte)))
     (if (= -1 b)
-        (gz-error t t)
+        (gz-error gz t t)
       b)))
 
 (defun gz-error (gz &optional errno message)
@@ -261,6 +261,7 @@ number of characters written."
 MESSAGE string may be supplied. If ERRNO or MESSAGE are T, they are
 retrieved using *C-ERROR-NUMBER* and {defun gz-error-message}
 respectively."
+  (check-arguments (gz-p gz) (gz) "must be a gz instance")
   (error 'gz-io-error :errno (if (eql t errno)
                                  *c-error-number*
                                errno)
@@ -280,6 +281,7 @@ respectively."
   "Decompresses IN-FILESPEC to OUT-FILESPEC using the default
 compression level. Returns two values, OUT-FILESPEC and the number of
 bytes decompressed."
+  (check-arguments (probe-file in-filespec) (in-filespec) "file does not exist")
   (let ((out-filespec (or out-filespec (gunzip-pathname in-filespec))))
     (assert (not (equalp in-filespec out-filespec)) (in-filespec)
             (txt "Unable to make implicit output filename from ~s,"
@@ -303,6 +305,7 @@ bytes decompressed."
   "Compresses IN-FILESPEC to OUT-FILESPEC using the default
 compression level. Returns two values, OUT-FILESPEC and the number of
 bytes compressed."
+  (check-arguments (probe-file in-filespec) (in-filespec) "file does not exist")
   (let ((out-filespec (or out-filespec (gzip-pathname in-filespec))))
     (assert (not (equalp in-filespec out-filespec)) (in-filespec)
             (txt "Unable to make implicit output filename from ~s,"

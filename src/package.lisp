@@ -96,9 +96,8 @@
   interface."))
 
 (defpackage :uk.co.deoxybyte-gzip
-  (:use #:common-lisp #:cffi #:zlib-ffi #:deoxybyte-io #:deoxybyte-utilities)
+  (:use #:common-lisp #:cffi #:zlib-ffi #:deoxybyte-utilities #:deoxybyte-io)
   (:nicknames #:deoxybyte-gzip #:gz)
-  (:import-from #:deoxybyte-utilities #:concat-strings #:txt)
   (:export
    ;; Zlib API
    #:zlib-error

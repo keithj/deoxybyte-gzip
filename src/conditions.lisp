@@ -19,21 +19,17 @@
 
 (in-package :uk.co.deoxybyte-gzip)
 
-(define-condition zlib-error (error)
-  ((text :initform nil
-         :initarg :text
-         :reader text-of
-         :documentation "Error message text.")
-   (errno :initform nil
+(define-condition zlib-error (error simple-text-condition)
+  ((errno :initform nil
           :initarg :errno
           :reader errno-of
           :documentation "The C error number."))
   (:report (lambda (condition stream)
-             (format stream "zlib error~@[: ~a~]." (text-of condition))))
+             (format stream "zlib error~@[: ~a~]." (message-of condition))))
   (:documentation "A condition raised when a zlib error occurs."))
 
 (define-condition gz-io-error (zlib-error io-error)
   ()
   (:report (lambda (condition stream)
-             (format stream "gz error~@[: ~a~]." (text-of condition))))
+             (format stream "gz error~@[: ~a~]." (message-of condition))))
   (:documentation "A condition raised when a gzip error occurs."))
