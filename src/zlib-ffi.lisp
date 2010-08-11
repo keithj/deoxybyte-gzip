@@ -216,6 +216,7 @@
   (buf :pointer)
   (len :int))
 
+(declaim (inline gzwrite))
 (defcfun ("gzwrite" gzwrite) :int
   (gz :pointer)
   (buf :pointer)

@@ -57,7 +57,7 @@
         (seq (make-array 4096 :element-type 'octet)))
     (with-open-file (stream out :direction :output :element-type 'octet)
       (loop
-         with gz = (make-gzip-stream in)
+         with gz = (gzip-open in)
          for n = (stream-read-sequence gz seq 0 4096) ; use start/end
                                                       ; args for
                                                       ; Lispworks
@@ -76,7 +76,7 @@
         (seq (make-array 4096 :element-type 'octet)))
     (with-open-file (stream in :element-type 'octet)
       (loop
-         with gz = (make-gzip-stream out :direction :output)
+         with gz = (gzip-open out :direction :output)
          for n = (read-sequence seq stream)
          sum n into num-bytes
          while (plusp n)

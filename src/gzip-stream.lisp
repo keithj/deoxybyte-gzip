@@ -50,8 +50,27 @@ stream."))
   (:documentation "A stream that writes characters to a compressed
 stream."))
 
-(defun make-gzip-stream (filespec &key (direction :input)
-                         (compression +z-default-compression+))
+(defmacro with-open-gzip ((var filespec &rest args) &body body)
+  `(let ((,var (apply #'gzip-open ,filespec ,args)))
+     (unwind-protect
+          (progn
+            ,@body)
+       (when ,var
+         (close ,var)))))
+
+(defun gzip-open (filespec &key (direction :input)
+                  (compression +z-default-compression+))
+  "Opens a gzip stream for FILESPEC.
+
+Key:
+
+- direction (symbol): One of :input (the default) or :output
+- compression (integer): The zlib compression level, if compressing.
+  An integer between 0 and 9, inclusive.
+
+Returns:
+
+- A {defclass gzip-stream}"
   (make-instance (ecase direction
                    (:input 'gzip-input-stream)
                    (:output 'gzip-output-stream))

@@ -133,7 +133,8 @@
    #:gzip-stream
    #:gzip-input-stream
    #:gzip-output-stream
-   #:make-gzip-stream
+   #:gzip-open
+   #:with-open-gzip
    
    ;; RFC1952 
    #:+id1+

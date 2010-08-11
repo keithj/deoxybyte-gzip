@@ -288,8 +288,7 @@ bytes decompressed."
                  "please specify OUT-FILESPEC explicitly.")
             in-filespec)
     (with-open-file (stream out-filespec :direction :output
-                            :element-type '(unsigned-byte 8)
-                            :if-exists :supersede)
+                            :element-type 'octet :if-exists :supersede)
       (with-gz-file (gz in-filespec)
         (let ((x (1- (expt 2 16))))
           (loop
