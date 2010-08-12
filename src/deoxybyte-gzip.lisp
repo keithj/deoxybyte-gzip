@@ -311,7 +311,7 @@ bytes compressed."
                  "please specify OUT-FILESPEC explicitly.")
             in-filespec)
     (with-open-file (stream in-filespec :element-type 'octet)
-      (with-gz-file (gz out-filespec :direction :output)
+      (with-gz-file (gz out-filespec :direction :output :compression 6)
         (let ((x (1- (expt 2 16))))
           (loop
              with buffer = (make-array x :element-type 'octet
