@@ -12,21 +12,21 @@ RFC1952 is included, allowing a hybrid approach to reading gzip data,
 using native Lisp streams and Zlib inflate/deflate.
 
 Measuring execution times of the gz:gzip and gz:gunzip functions shows
-deoxybyte-gzip to be fractionally slower than gzip/gunzip. The
-Gray-streams implementation is up to 30% slower than gzip/gunzip.
+deoxybyte-gzip to be fractionally slower than gzip, but over 3x slower
+than gunzip.
 
-
-Relative execution time (SBCL 1.0.32 X86-64):
+Relative execution time (SBCL 1.0.40 X86-64):
 
                   gzip   deoxybyte-gzip     gzip-stream
-  Compression      1.0             1.05            1.11
-Decompression      1.0             1.07            1.30
+  Compression      1.0             1.1             1.1
+Decompression      1.0             3.1             3.5
 
-Timings were taken compressing and decompressing a 1.4 Gb text file
+Timings were taken compressing and decompressing a 1.8 Gb text file
 using gzip/gunzip command line programs, the gz:gzip/gz:gunzip
 functions (which use an internal buffer of length 2^16 -1) and the
 Gray streams classes using
-gz:stream-read-sequence/gz:stream-write-sequence methods.
+gz:stream-read-sequence/gz:stream-write-sequence methods. A zlib
+compression level of 6 was used.
 
 This system is named with a deoxybyte- prefix because there are
 several existing Common Lisp packages using the gzip name and I don't

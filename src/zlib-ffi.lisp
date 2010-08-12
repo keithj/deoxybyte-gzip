@@ -211,6 +211,7 @@
 (defcfun ("gzclose" gzclose) :int
   (gz :pointer))
 
+(declaim (inline gzread))
 (defcfun ("gzread" gzread) :int
   (gz :pointer)
   (buf :pointer)

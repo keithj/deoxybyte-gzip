@@ -177,6 +177,8 @@ Key:
 (defun gz-read (gz buffer n)
   "Reads up to N bytes from GZ into octet vector BUFFER. Returns the
 number of bytes read, which may be 0."
+  (declare (optimize (speed 3)))
+  (declare (type simple-octet-vector buffer))
   (cond ((not (gz-open-p gz))
          (gz-error gz nil "attempted to read from a closed stream"))
         ((gz-eof-p gz)
@@ -184,6 +186,7 @@ number of bytes read, which may be 0."
         (t
          (with-foreign-pointer (buf (length buffer))
            (let ((x (gzread (gz-ptr gz) buf n)))
+             (declare (type fixnum x))
              (cond ((zerop x)
                     0)
                    ((= -1 x)
@@ -200,14 +203,14 @@ number of bytes written. BUFFER must be a simple-array of
 unsigned-byte 8."
   (declare (optimize (speed 3)))
   (declare (type simple-octet-vector buffer)
-           (type fixnum n))
+           (type vector-index n))
   (unless (gz-open-p gz)
     (gz-error gz nil "attempted to write to a closed stream"))
   (with-foreign-pointer (buf (length buffer))
     (loop
        for i from 0 below n
        do (setf (mem-aref buf :uint8 i) (aref buffer i)))
-    (let ((x (the fixnum (gzwrite (gz-ptr gz) buf n))))
+    (let ((x (gzwrite (gz-ptr gz) buf n)))
       (if (zerop x)
           (gz-error gz t t)
         x))))
@@ -288,13 +291,14 @@ bytes decompressed."
                  "please specify OUT-FILESPEC explicitly.")
             in-filespec)
     (with-open-file (stream out-filespec :direction :output
-                            :element-type 'octet :if-exists :supersede)
+                            :element-type 'octet
+                            :if-exists :overwrite :if-does-not-exist :create)
       (with-gz-file (gz in-filespec)
         (let ((x (1- (expt 2 16))))
           (loop
              with buffer = (make-array x :element-type 'octet
                                        :initial-element 0)
-             for n = (gz-read gz buffer x)
+             for n of-type vector-index = (gz-read gz buffer x)
              sum n into num-bytes
              do (write-sequence buffer stream :end n)
              until (gz-eof-p gz)
