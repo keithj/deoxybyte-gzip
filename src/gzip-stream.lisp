@@ -51,7 +51,7 @@ stream."))
 stream."))
 
 (defmacro with-open-gzip ((var filespec &rest args) &body body)
-  `(let ((,var (apply #'gzip-open ,filespec ,args)))
+  `(let ((,var (gzip-open ,filespec ,@args)))
      (unwind-protect
           (progn
             ,@body)
