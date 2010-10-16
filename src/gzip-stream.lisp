@@ -19,19 +19,19 @@
 
 (in-package :uk.co.deoxybyte-gzip)
 
-(defconstant +byte-buffer-size+ (1- (expt 2 16)))
+(defconstant +octet-buffer-size+ (1- (expt 2 16)))
 
-(deftype byte-buffer ()
-  `(simple-array (unsigned-byte 8) (,+byte-buffer-size+)))
+(deftype octet-buffer ()
+  `(simple-array (unsigned-byte 8) (,+octet-buffer-size+)))
 
-(deftype byte-buffer-index ()
-  `(integer 0 ,+byte-buffer-size+))
+(deftype octet-buffer-index ()
+  `(integer 0 ,+octet-buffer-size+))
 
 (defclass gzip-stream (fundamental-stream)
   ((gz :initarg :gz
        :documentation "The gzip handle.")
    (buffer :initarg :buffer
-           :initform (make-array +byte-buffer-size+
+           :initform (make-array +octet-buffer-size+
                                  :element-type 'octet
                                  :initial-element (char-code #\.)))
    (open-stream-p :initform t))
@@ -91,12 +91,12 @@ Returns:
       (setf open-stream-p nil)
       (gz-close gz))))
 
-(defmethod stream-file-position ((stream gzip-stream) &optional position-spec)
+(defmethod stream-file-position ((stream gzip-stream) &optional position)
   (with-slots (gz)
       stream
-    (if position-spec
-        (gz-seek gz position-spec)
-      (gz-tell gz))))
+    (if position
+        (gz-seek gz position)
+        (gz-tell gz))))
 
 (defmethod stream-clear-input ((stream gzip-input-stream))
   nil)
@@ -165,19 +165,20 @@ Returns:
                                      (incf num-written num-buffered)
                                      (decf num-to-write num-buffered)
                                      (setf num-buffered
-                                           (gz-read gz buffer
-                                                    (min num-to-write
-                                                         +byte-buffer-size+)))))
+                                           (gz-read
+                                            gz buffer (min
+                                                       num-to-write
+                                                       +octet-buffer-size+)))))
                      finally (return num-written)))))
     (let ((end (or end (length seq)))
           (gz (slot-value stream 'gz)) 
           (buffer (slot-value stream 'buffer))) ; CCL 1.4 with-slots bug?
       (let* ((num-to-write (- end start))
              (num-buffered (gz-read gz buffer (min num-to-write
-                                                   +byte-buffer-size+)))
+                                                   +octet-buffer-size+)))
              (num-written 0))
         (declare (type fixnum num-to-write num-written)
-                 (type byte-buffer-index num-buffered))
+                 (type octet-buffer-index num-buffered))
         (typecase seq
           (simple-octet-vector
            (define-copy-op simple-octet-vector aref
@@ -202,8 +203,8 @@ Returns:
                            (type ,seq-type seq))
                   (loop
                      while (plusp num-to-write)
-                     for num-buffered = (min num-to-write +byte-buffer-size+)
-                     for n of-type byte-buffer-index =
+                     for num-buffered = (min num-to-write +octet-buffer-size+)
+                     for n of-type octet-buffer-index =
                        (loop
                           for i from 0 below num-buffered
                           do (progn
@@ -216,7 +217,7 @@ Returns:
                           (incf num-written n)
                           (if (< n num-buffered)
                               (setf num-to-write 0)
-                            (decf num-to-write n)))
+                              (decf num-to-write n)))
                      finally (return num-written)))))
     (let ((end (or end (length seq)))
           (gz (slot-value stream 'gz))

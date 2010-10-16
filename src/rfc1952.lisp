@@ -66,7 +66,7 @@
 - isize: Input SIZE.
 - crc32: CRC-32.
 - cdata: Compressed DATA.
-- cend: Compressed data End. The length of compressed data in cdata,
+- cend: Compressed data END. The length of compressed data in cdata,
   starting at index 0, if cdata is only partially filled."
   (id1 +id1+ :type uint8 :read-only t)
   (id2 +id2+ :type uint8 :read-only t)

@@ -86,11 +86,11 @@ the compressed size in bytes."
         (let ((val (%compress2 dbytes dlen sbytes source-len compression)))
           (if (minusp val)
               (z-error val)
-            (loop
-               with compressed-len = (mem-ref dlen :long)
-               for i from dest-start below compressed-len
-               do (setf (aref dest i) (mem-aref dbytes :uint8 i))
-               finally (return (values dest compressed-len)))))))))
+              (loop
+                 with compressed-len = (mem-ref dlen :long)
+                 for i from dest-start below compressed-len
+                 do (setf (aref dest i) (mem-aref dbytes :uint8 i))
+                 finally (return (values dest compressed-len)))))))))
 
 (defun uncompress (source dest &key (source-start 0) source-end (dest-start 0))
   "Uncompresses bytes in array SOURCE to array DEST, returning DEST
@@ -117,11 +117,11 @@ and the compressed size in bytes."
         (let ((val (%uncompress dbytes dlen sbytes source-len)))
           (if (minusp val)
               (z-error val)
-            (loop
-               with uncompressed-len = (mem-ref dlen :long)
-               for i from dest-start below uncompressed-len
-               do (setf (aref dest i) (mem-aref dbytes :uint8 i))
-               finally (return (values dest uncompressed-len)))))))))
+              (loop
+                 with uncompressed-len = (mem-ref dlen :long)
+                 for i from dest-start below uncompressed-len
+                 do (setf (aref dest i) (mem-aref dbytes :uint8 i))
+                 finally (return (values dest uncompressed-len)))))))))
 
 (defun gz-open (filespec &key (direction :input)
                 (compression +z-default-compression+))
@@ -151,7 +151,7 @@ Key:
     (if (null-pointer-p (gz-ptr gz))
         (gz-error gz t (format nil "failed to open ~a (~a)"
                                filespec (gz-error-message gz)))
-      gz)))
+        gz)))
 
 (defun gz-close (gz)
   "Closes GZ, if open."
@@ -213,7 +213,7 @@ unsigned-byte 8."
     (let ((x (gzwrite (gz-ptr gz) buf n)))
       (if (zerop x)
           (gz-error gz t t)
-        x))))
+          x))))
 
 (defun gz-read-string (gz str n)
   "Reads up to N characters from GZ into string STR. Returns the
@@ -226,7 +226,7 @@ number of characters read, which may be 0."
          (let ((x (gzgets (gz-ptr gz) str (1+ n))))
            (if (= -1 x)
                (gz-error gz t t)
-             x)))))
+               x)))))
 
 (defun gz-write-string (gz buffer)
   "Writes up to N characters in octet vector BUFFER to GZ. Returns the
@@ -236,7 +236,7 @@ number of characters written."
   (let ((n (gzputs (gz-ptr gz) buffer)))
     (if (= -1 n)
         (gz-error gz t t)
-      n)))
+        n)))
 
 (defun gz-read-byte (gz)
   "Returns a byte read from GZ, or :eof ."
@@ -248,7 +248,7 @@ number of characters written."
          (let ((b (gzgetc (gz-ptr gz))))
            (if (= -1 b)
                (gz-error gz t t)
-             b)))))
+               b)))))
 
 (defun gz-write-byte (gz byte)
   "Writes BYTE to GZ and returns BYTE."
@@ -257,7 +257,7 @@ number of characters written."
   (let ((b (gzputc (gz-ptr gz) byte)))
     (if (= -1 b)
         (gz-error gz t t)
-      b)))
+        b)))
 
 (defun gz-error (gz &optional errno message)
   "Raises a {define-condition gz-io-error} . An ERRNO integer and
@@ -267,10 +267,10 @@ respectively."
   (check-arguments (gz-p gz) (gz) "must be a gz instance")
   (error 'gz-io-error :errno (if (eql t errno)
                                  *c-error-number*
-                               errno)
+                                 errno)
          :text (if (eql t message)
                    (gz-error-message gz)
-                 message)))
+                   message)))
 
 (defun gz-error-message (gz)
   "Returns a zlib error message string relevant to GZ."
@@ -278,7 +278,7 @@ respectively."
                (gzerror (gz-ptr gz) ptr))))
     (if (string= "" msg)
         "no error message available"
-      msg)))
+        msg)))
 
 (defun gunzip (in-filespec &optional out-filespec)
   "Decompresses IN-FILESPEC to OUT-FILESPEC using the default
@@ -337,14 +337,14 @@ foo.gz  -> foo.gz
 foo.tar -> foo.tar.gz"
   (if (string= "gz" (pathname-type pathname))
       (pathname pathname)
-    (merge-pathnames
-     (make-pathname :host (pathname-host pathname)
-                    :device (pathname-device pathname)
-                    :directory (pathname-directory pathname)
-                    :name (concatenate 'string
-                                       (pathname-name pathname) "."
-                                       (pathname-type pathname)))
-     (make-pathname :type "gz"))))
+      (merge-pathnames
+       (make-pathname :host (pathname-host pathname)
+                      :device (pathname-device pathname)
+                      :directory (pathname-directory pathname)
+                      :name (concatenate 'string
+                                         (pathname-name pathname) "."
+                                         (pathname-type pathname)))
+       (make-pathname :type "gz"))))
 
 (defun gunzip-pathname (pathname)
   "Returns a copy of PATHNAME. Any GZ type component is removed and
@@ -365,11 +365,11 @@ foo.tar.gz -> foo.tar"
                       :directory directory
                       :name (subseq (pathname-name pathname) 0 dot)
                       :type (subseq (pathname-name pathname) (1+ dot)))
-          (make-pathname :host host
-                         :device device
-                         :directory directory
-                         :name (pathname-name pathname))))
-    (pathname pathname)))
+            (make-pathname :host host
+                           :device device
+                           :directory directory
+                           :name (pathname-name pathname))))
+      (pathname pathname)))
 
 (defun deflate-stream (source dest
                        &key (buffer-size +default-zlib-buffer-size+)
@@ -544,7 +544,7 @@ Returns:
                         "must be an integer between 1 and 9, inclusive")
   (let ((wbits (if suppress-header
                    (- window-bits)
-                 window-bits))
+                   window-bits))
         (strat (ecase strategy
                  (:filtered +z-filtered+)
                  (:huffman-only +z-huffman-only+)
@@ -556,7 +556,7 @@ Returns:
                   (:inflate (inflate-init2 z-stream wbits)))))
       (if (minusp val)
           (z-error val)
-        z-stream))))
+          z-stream))))
 
 (defun make-z-stream ()
   "Makes an returns a new Z-STREAM with the ZALLOC, ZFREE and OPAQUE
@@ -579,7 +579,7 @@ Z-STREAM and frees the Z-STREAM memory."
                     (:inflate (inflate-end z-stream)))))
          (if (minusp val)
              (z-error val)
-           t))
+             t))
     (foreign-free z-stream)))
 
 (defun z-vector-operation (operation source dest backoff &rest z-stream-args)
@@ -589,7 +589,7 @@ Z-STREAM and frees the Z-STREAM memory."
   (check-arguments (or (zerop backoff)
                        (and (plusp backoff) (< backoff (length dest))))
                    (backoff)
-              "must be a positive value < ~d" (length dest))
+                   "must be a positive value < ~d" (length dest))
   (let ((zs (apply #'z-stream-open operation z-stream-args))
         (op-fn (ecase operation
                  (:inflate #'%inflate)
@@ -700,7 +700,7 @@ Returns:
                     while (plusp num-read)
                     do (let ((flush (if (= buffer-size num-read)
                                         +z-no-flush+
-                                      +z-finish+)))
+                                        +z-finish+)))
                          (loop
                             with out-full = t
                             while out-full
