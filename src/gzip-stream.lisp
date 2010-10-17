@@ -83,7 +83,7 @@ Returns:
 (defmethod open-stream-p ((stream gzip-stream))
   (slot-value stream 'open-stream-p))
 
-(defmethod close ((stream gzip-stream) &key abort)
+(defmethod stream-close ((stream gzip-stream) &key abort)
   (declare (ignore abort))
   (with-slots (open-stream-p gz)
       stream
