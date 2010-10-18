@@ -179,23 +179,21 @@ Key:
 number of bytes read, which may be 0."
   (declare (optimize (speed 3)))
   (declare (type simple-octet-vector buffer))
-  (cond ((not (gz-open-p gz))
-         (gz-error gz nil "attempted to read from a closed stream"))
-        ((gz-eof-p gz)
-         0)
-        (t
-         (with-foreign-pointer (buf (length buffer))
-           (let ((x (gzread (gz-ptr gz) buf n)))
-             (declare (type fixnum x))
-             (cond ((zerop x)
-                    0)
-                   ((= -1 x)
-                    (gz-error gz t t))
-                   (t
-                    (loop
-                       for i from 0 below x
-                       do (setf (aref buffer i) (mem-aref buf :uint8 i))
-                       finally (return x)))))))))
+  (check-arguments (gz-open-p gz) (gz) "attempted to read from a closed stream")
+  (if (gz-eof-p gz)
+      0
+      (with-foreign-pointer (buf (length buffer))
+        (let ((x (gzread (gz-ptr gz) buf n)))
+          (declare (type fixnum x))
+          (cond ((zerop x)
+                 0)
+                ((= -1 x)
+                 (gz-error gz t t))
+                (t
+                 (loop
+                    for i from 0 below x
+                    do (setf (aref buffer i) (mem-aref buf :uint8 i))
+                    finally (return x))))))))
 
 (defun gz-write (gz buffer n)
   "Writes up to N bytes in octet vector BUFFER to GZ. Returns the
@@ -204,8 +202,7 @@ unsigned-byte 8."
   (declare (optimize (speed 3)))
   (declare (type simple-octet-vector buffer)
            (type vector-index n))
-  (unless (gz-open-p gz)
-    (gz-error gz nil "attempted to write to a closed stream"))
+  (check-arguments (gz-open-p gz) (gz) "attempted to write to a closed stream")
   (with-foreign-pointer (buf (length buffer))
     (loop
        for i from 0 below n
@@ -216,23 +213,25 @@ unsigned-byte 8."
           x))))
 
 (defun gz-read-string (gz str n)
-  "Reads up to N characters from GZ into string STR. Returns the
-number of characters read, which may be 0."
-  (cond ((not (gz-open-p gz))
-         (gz-error gz nil "attempted to read from a closed stream"))
-        ((gz-eof-p gz)
-         0)
-        (t
-         (let ((x (gzgets (gz-ptr gz) str (1+ n))))
-           (if (= -1 x)
-               (gz-error gz t t)
+  "Reads up to N characters from GZ into string STR. Returns a string
+or :eof . Relies on the CFFI conversion terminating the returned
+string, so the result may be shorter than the STR argument."
+  (check-arguments (gz-open-p gz) (gz) "attempted to read from a closed stream")
+  (if (gz-eof-p gz)
+      :eof
+      (let ((x (gzgets (gz-ptr gz) str (1+ n))))
+        (cond ((null x)
+               (cond ((gz-eof-p x)
+                      :eof)
+                     (t
+                      (gz-error gz t t))))
+              (t
                x)))))
 
 (defun gz-write-string (gz buffer)
   "Writes up to N characters in octet vector BUFFER to GZ. Returns the
 number of characters written."
-  (unless (gz-open-p gz)
-    (gz-error nil "attempted to write to a closed stream"))
+  (check-arguments (gz-open-p gz) (gz) "attempted to write to a closed stream")
   (let ((n (gzputs (gz-ptr gz) buffer)))
     (if (= -1 n)
         (gz-error gz t t)
@@ -240,20 +239,17 @@ number of characters written."
 
 (defun gz-read-byte (gz)
   "Returns a byte read from GZ, or :eof ."
-  (cond ((not (gz-open-p gz))
-         (gz-error gz nil "attempted to read from a closed stream"))
-        ((gz-eof-p gz)
-         :eof)
-        (t
-         (let ((b (gzgetc (gz-ptr gz))))
-           (if (= -1 b)
-               (gz-error gz t t)
-               b)))))
+  (check-arguments (gz-open-p gz) (gz) "attempted to read from a closed stream")
+  (if (gz-eof-p gz)
+      :eof
+      (let ((b (gzgetc (gz-ptr gz))))
+        (if (= -1 b)
+            (gz-error gz t t)
+            b))))
 
 (defun gz-write-byte (gz byte)
   "Writes BYTE to GZ and returns BYTE."
-  (unless (gz-open-p gz)
-    (gz-error gz nil "attempted to write to a closed stream"))
+  (check-arguments (gz-open-p gz) (gz) "attempted to read from a closed stream")
   (let ((b (gzputc (gz-ptr gz) byte)))
     (if (= -1 b)
         (gz-error gz t t)
