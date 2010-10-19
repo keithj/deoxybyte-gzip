@@ -19,7 +19,7 @@
 
 (in-package :uk.co.deoxybyte-gzip)
 
-(defconstant +octet-buffer-size+ (1- (expt 2 16)))
+(defconstant +octet-buffer-size+ (1- (expt 2 13)))
 
 (deftype octet-buffer ()
   `(simple-array (unsigned-byte 8) (,+octet-buffer-size+)))
