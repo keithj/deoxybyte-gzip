@@ -26,7 +26,7 @@
 (defsystem deoxybyte-gzip
     :name "deoxybyte-gzip"
     :author "Keith James"
-    :version "0.3.0"
+    :version "0.3.1"
     :licence "GPL v3"
     :in-order-to ((test-op (load-op :deoxybyte-gzip :deoxybyte-gzip-test)))
     :depends-on ((:version :cffi "0.10.3")
