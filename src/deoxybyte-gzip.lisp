@@ -19,7 +19,7 @@
 
 (in-package :uk.co.deoxybyte-gzip)
 
-(defconstant +default-zlib-buffer-size+ (expt 2 18))
+(defconstant +default-zlib-buffer-size+ 4096)
 
 (defstruct gz
   "A gzip handle.
@@ -593,10 +593,10 @@ Z-STREAM and frees the Z-STREAM memory."
         (reset-fn (ecase operation
                     (:inflate #'inflate-reset)
                     (:deflate #'deflate-reset))))
-    (let ((source-buffer (replace (make-shareable-byte-vector
-                                   (length source)) source))
-          (dest-buffer (replace (make-shareable-byte-vector
-                                 (length dest)) dest)))
+    (let ((source-buffer (replace (make-shareable-byte-vector (length source))
+                                  source))
+          (dest-buffer (replace (make-shareable-byte-vector (length dest))
+                                dest)))
       (unwind-protect
           (with-foreign-slots ((avail-in next-in avail-out next-out
                                 total-in total-out) zs z-stream)
@@ -604,7 +604,7 @@ Z-STREAM and frees the Z-STREAM memory."
             (with-pointer-to-vector-data (in source-buffer)
               (with-pointer-to-vector-data (out dest-buffer)
                 (loop
-                  with avail of-type array-index = (length source)
+                  with avail of-type vector-index = (length source)
                   do (cond ((plusp avail)
                             (setf next-in in
                                   avail-in avail
