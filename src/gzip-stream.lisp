@@ -22,10 +22,10 @@
 (defconstant +octet-buffer-size+ 4096)
 
 (deftype octet-buffer ()
-  `(simple-array (unsigned-byte 8) (,+octet-buffer-size+)))
+  '(simple-array (unsigned-byte 8) 4096))
 
 (deftype octet-buffer-index ()
-  `(integer 0 ,+octet-buffer-size+))
+  '(integer 0 4096))
 
 (defclass gzip-stream (fundamental-stream)
   ((gz :initarg :gz
