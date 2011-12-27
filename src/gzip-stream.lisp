@@ -22,7 +22,7 @@
 (defconstant +octet-buffer-size+ 4096)
 
 (deftype octet-buffer ()
-  '(simple-array (unsigned-byte 8) 4096))
+  '(simple-array (unsigned-byte 8) (4096)))
 
 (deftype octet-buffer-index ()
   '(integer 0 4096))
@@ -58,13 +58,15 @@ stream."))
        (when ,var
          (close ,var)))))
 
-(defun gzip-open (filespec &key (direction :input)
+(defun gzip-open (filespec &key (direction :input) (element-type 'octet)
                   (compression +z-default-compression+))
   "Opens a gzip stream for FILESPEC.
 
 Key:
 
 - direction (symbol): One of :input (the default) or :output
+- element-type (symbol): One of 'octet (the default) or 'string for input,
+  or 'octet only for output.
 - compression (integer): The zlib compression level, if compressing.
   An integer between 0 and 9, inclusive.
 
@@ -72,8 +74,11 @@ Returns:
 
 - A {defclass gzip-stream}"
   (make-instance (ecase direction
-                   (:input 'gzip-input-stream)
-                   (:output 'gzip-output-stream))
+                   (:input (ecase element-type
+                             (octet 'gzip-input-stream)
+                             (string 'gzip-line-input-stream)))
+                   (:output (ecase element-type
+                              (octet 'gzip-output-stream))))
                  :gz (gz-open filespec :direction direction
                               :compression compression)))
 

@@ -98,7 +98,7 @@ the next byte is to be read.")
           (multiple-value-bind (chunks has-eol-p)
               (read-octet-line stream)
             (if (null chunks)
-                (values :eof t)
+                (values (make-array 0 :element-type 'base-char) t)
                 (values (build-string chunks) has-eol-p)))
           (pop line-stack)))))
 
@@ -123,8 +123,6 @@ the next byte is to be read.")
   (loop
      for i from start below end
      do (write-sequence (elt sequence i) stream)))
-
-(defparameter *empty-chunks* (list (make-array 0 :element-type 'octet)))
 
 (defun read-octet-line (stream)
   "Reads chunks of bytes up to the next newline or end of stream,

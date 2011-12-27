@@ -142,12 +142,14 @@ Key:
                             (<= 0 compression 9)))
                    (compression)
                    "must be an integer between 0 and 9, inclusive")
-  (let ((gz (make-gz :ptr (gzopen (pathstring filespec)
-                                  (format nil "~c~@[~d~]"
-                                          (ecase direction
-                                            (:input #\r)
-                                            (:output #\w)) compression))
-                     :open-p t)))
+  (let* ((mode (format nil "~c~@[~d~]" (ecase direction
+                                         (:input #\r)
+                                         (:output #\w)) compression))
+         (designator (maybe-standard-stream filespec))
+         (ptr (if (streamp designator)
+                  (gzdopen (file-descriptor designator) mode)
+                  (gzopen (pathstring filespec) mode)))
+         (gz (make-gz :ptr ptr :open-p t)))
     (if (null-pointer-p (gz-ptr gz))
         (gz-error gz t (format nil "failed to open ~a (~a)"
                                filespec (gz-error-message gz)))

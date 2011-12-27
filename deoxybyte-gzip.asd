@@ -26,11 +26,12 @@
 (defsystem deoxybyte-gzip
     :name "deoxybyte-gzip"
     :author "Keith James"
-    :version "0.3.2"
+    :version "0.4.0"
     :licence "GPL v3"
     :in-order-to ((test-op (load-op :deoxybyte-gzip :deoxybyte-gzip-test)))
     :depends-on ((:version :cffi "0.10.3")
-                 (:version :deoxybyte-io "0.9.0"))
+                 (:version :deoxybyte-io "0.9.0")
+                 (:version :deoxybyte-unix "0.7.0"))
     :components ((:module :deoxybyte-gzip
                           :serial t
                           :pathname "src/"
@@ -39,7 +40,8 @@
                                        (:file "rfc1952")
                                        (:file "conditions")
                                        (:file "deoxybyte-gzip")
-                                       (:file "gzip-stream")))
+                                       (:file "gzip-stream")
+                                       (:file "line-stream")))
                  (:lift-test-config :lift-tests
                                     :pathname "deoxybyte-gzip-test"
                                     :target-system :deoxybyte-gzip)

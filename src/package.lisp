@@ -97,6 +97,7 @@
 
 (defpackage :uk.co.deoxybyte-gzip
   (:use #:common-lisp #:cffi #:zlib-ffi #:deoxybyte-utilities #:deoxybyte-io)
+  (:import-from #:deoxybyte-unix #:file-descriptor #:maybe-standard-stream)
   (:nicknames #:deoxybyte-gzip #:gz)
   (:export
    ;; Zlib API
@@ -133,6 +134,7 @@
    #:gzip-stream
    #:gzip-input-stream
    #:gzip-output-stream
+   #:gzip-line-input-stream
    #:gzip-open
    #:with-open-gzip
    
