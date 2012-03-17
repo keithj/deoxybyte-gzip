@@ -26,7 +26,7 @@
 (defsystem deoxybyte-gzip
     :name "deoxybyte-gzip"
     :author "Keith James"
-    :version "0.4.0"
+    :version "0.5.0"
     :licence "GPL v3"
     :in-order-to ((test-op (load-op :deoxybyte-gzip :deoxybyte-gzip-test)))
     :depends-on ((:version :cffi "0.10.3")
@@ -41,7 +41,9 @@
                                        (:file "conditions")
                                        (:file "deoxybyte-gzip")
                                        (:file "gzip-stream")
-                                       (:file "line-stream")))
+                                       (:file "line-stream")
+                                       #+:sbcl (:file "sbcl")
+                                       #+:ccl (:file "ccl")))
                  (:lift-test-config :lift-tests
                                     :pathname "deoxybyte-gzip-test"
                                     :target-system :deoxybyte-gzip)

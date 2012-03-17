@@ -118,38 +118,8 @@ Returns:
 (defmethod stream-read-byte ((stream gzip-input-stream))
   (gz-read-byte (slot-value stream 'gz)))
 
-#+(or :sbcl :ccl)
-(defmethod stream-read-sequence ((stream gzip-input-stream)
-                                 (seq sequence) &optional (start 0) end)
-  (%stream-read-sequence stream seq start end))
-
-#+:ccl
-(defmethod stream-read-vector ((stream gzip-input-stream)
-                               (vec vector) &optional (start 0) end)
-  (%stream-read-sequence stream vec start end))
-
-#+:lispworks
-(defmethod stream-read-sequence ((stream gzip-output-stream)
-                                 (seq sequence) start end)
-  (%stream-read-sequence stream seq start end))
-
 (defmethod stream-write-byte ((stream gzip-output-stream) (byte fixnum))
   (gz-write-byte (slot-value stream 'gz) byte))
-
-#+(or :sbcl :ccl)
-(defmethod stream-write-sequence ((stream gzip-output-stream)
-                                  (seq sequence) &optional (start 0) end)
-  (%stream-write-sequence stream seq start end))
-
-#+:ccl
-(defmethod stream-write-vector ((stream gzip-output-stream)
-                                (vec vector) &optional (start 0) end)
-  (%stream-write-sequence stream vec start end))
-
-#+:lispworks
-(defmethod stream-write-sequence ((stream gzip-output-stream)
-                                 (seq sequence) start end)
-  (%stream-write-sequence stream seq start end))
 
 (declaim (inline %stream-read-sequence))
 (defun %stream-read-sequence (stream seq &optional (start 0) end)
