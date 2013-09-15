@@ -372,7 +372,7 @@ foo.tar.gz -> foo.tar"
 (defun deflate-stream (source dest
                        &key (buffer-size +default-zlib-buffer-size+)
                        (compression +z-default-compression+)
-                       suppress-header (window-bits 15) (mem-level 8)
+                       suppress-header gzip-format (window-bits 15) (mem-level 8)
                        (strategy :default-strategy))
   "Deflates stream SOURCE to stream DEST.
 
@@ -388,6 +388,7 @@ Key:
 - suppress-header (boolean): Exposes a feature of Zlib whereby the
   compressed data may be produced without a Zlib header, trailer or
   checksum.
+- gzip-format (boolean): write the gzip format instead of the Zlib format.
 - window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
 - mem-level (fixnum): The Zlib mem-level argument (1-9, inclusive).
 - strategy (fixnum): The Zlib strategy argument (one
@@ -402,12 +403,13 @@ Returns:
                       #'fill-from-stream #'empty-to-stream buffer-size
                       :compression compression
                       :suppress-header suppress-header
+                      :gzip-format gzip-format
                       :window-bits window-bits :mem-level mem-level
                       :strategy strategy))
 
 (defun inflate-stream (source dest
                        &key (buffer-size +default-zlib-buffer-size+)
-                       suppress-header (window-bits 15))
+                       suppress-header gzip-format (window-bits 15))
   "Inflates stream SOURCE to stream DEST.
 
 Arguments:
@@ -422,6 +424,7 @@ Key:
   compressed data may be produced without a Zlib header, trailer or
   checksum. This must be set T if the data were compressed with the
   header suppressed.
+- gzip-format (boolean): read the gzip format instead of the Zlib format.
 - window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
 
 Returns:
@@ -432,11 +435,12 @@ Returns:
   (z-stream-operation :inflate source dest
                       #'fill-from-stream #'empty-to-stream buffer-size
                       :suppress-header suppress-header
+                      :gzip-format gzip-format
                       :window-bits window-bits))
 
 (defun deflate-vector (source dest
                        &key (compression +z-default-compression+)
-                       suppress-header (window-bits 15) (mem-level 8)
+                       suppress-header gzip-format (window-bits 15) (mem-level 8)
                        (strategy :default-strategy) (backoff 0))
   "Deflates vector SOURCE to vector DEST.
 
@@ -451,6 +455,7 @@ Key:
 - suppress-header (boolean): Exposes an undocumented feature of Zlib
   whereby the compressed data may be produced without a Zlib header or
   checksum.
+- gzip-format (boolean): write the gzip format instead of the Zlib format.
 - window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
 - mem-level (fixnum): The Zlib mem-level argument (1-9, inclusive).
 - strategy (fixnum): The Zlib strategy argument (one
@@ -466,10 +471,11 @@ Returns:
   (z-vector-operation :deflate source dest backoff
                       :compression compression
                       :suppress-header suppress-header
+                      :gzip-format gzip-format
                       :window-bits window-bits :mem-level mem-level
                       :strategy strategy))
 
-(defun inflate-vector (source dest &key suppress-header (window-bits 15)
+(defun inflate-vector (source dest &key suppress-header gzip-format (window-bits 15)
                        (backoff 0))
   "Inflates vector SOURCE to vector DEST.
 
@@ -485,6 +491,7 @@ Key:
   whereby the compressed data may be produced without a Zlib header or
   checksum. This must be set T if the data were compressed with the
   header suppressed.
+- gzip-format (boolean): read the gzip format instead of the Zlib format.
 - window-bits (fixnum): The Zlib window-bits argument (9-15, inclusive).
 
 Returns:
@@ -496,6 +503,7 @@ Returns:
   (check-type dest (vector octet))
   (z-vector-operation :inflate source dest backoff
                       :suppress-header suppress-header
+                      :gzip-format gzip-format
                       :window-bits window-bits))
 
 (let ((init (%adler32 0 (null-pointer) 0)))
@@ -527,7 +535,7 @@ Returns:
            (%crc32 (or crc32 init) buf len))))))
 
 (defun z-stream-open (operation &key (compression +z-default-compression+)
-                      suppress-header (window-bits 15) (mem-level 8)
+                      suppress-header gzip-format (window-bits 15) (mem-level 8)
                       (strategy :default-strategy))
   "Returns a new Z-STREAM initialised for OPERATION (:inflate or :deflate)."
   (check-arguments (and (integerp compression)
@@ -540,9 +548,14 @@ Returns:
   (check-arguments (and (integerp mem-level)
                         (<= 1 mem-level 9)) (mem-level)
                         "must be an integer between 1 and 9, inclusive")
-  (let ((wbits (if suppress-header
-                   (- window-bits)
-                   window-bits))
+  (check-arguments (not (and suppress-header gzip-format))
+                   (suppress-header gzip-format)
+                        "cannot both be set")
+  (let ((wbits (cond (suppress-header
+                      (- window-bits))
+                     (gzip-format
+                      #.(+ 15 16))
+                     (t window-bits)))
         (strat (ecase strategy
                  (:filtered +z-filtered+)
                  (:huffman-only +z-huffman-only+)
