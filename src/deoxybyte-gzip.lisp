@@ -372,8 +372,8 @@ foo.tar.gz -> foo.tar"
 (defun deflate-stream (source dest
                        &key (buffer-size +default-zlib-buffer-size+)
                        (compression +z-default-compression+)
-                       suppress-header gzip-format (window-bits 15) (mem-level 8)
-                       (strategy :default-strategy))
+                       suppress-header gzip-format (window-bits 15)
+                       (mem-level 8) (strategy :default-strategy))
   "Deflates stream SOURCE to stream DEST.
 
 Arguments:
@@ -550,11 +550,13 @@ Returns:
                         "must be an integer between 1 and 9, inclusive")
   (check-arguments (not (and suppress-header gzip-format))
                    (suppress-header gzip-format)
-                        "cannot both be set")
+                   "cannot both be set")
   (let ((wbits (cond (suppress-header
                       (- window-bits))
                      (gzip-format
-                      #.(+ 15 16))
+                      #.(+ 15 16)) ; Write a simple gzip header and
+                                   ; trailer around the compressed
+                                   ; data, instead of a zlib wrapper
                      (t window-bits)))
         (strat (ecase strategy
                  (:filtered +z-filtered+)

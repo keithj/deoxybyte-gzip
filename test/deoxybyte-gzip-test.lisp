@@ -179,6 +179,17 @@
      (ensure (binary-file= out test))
      (delete-file out)))
 
+(addtest (deoxybyte-gzip-tests) deflate-stream/2
+   (let ((in (merge-pathnames "data/lorem.txt"))
+         (out (merge-pathnames "data/lorem.tmp.gz"))
+         (test (merge-pathnames "data/lorem.gz")))
+     (with-open-file (s1 in :element-type 'octet)
+       (with-open-file (s2 out :element-type 'octet :direction :output
+                           :if-exists :supersede)
+         (deflate-stream s1 s2 :gzip-format t)))
+     (ensure (binary-file= out test))
+     (delete-file out)))
+
 (addtest (deoxybyte-gzip-tests) inflate-stream/1
    (let ((in (merge-pathnames "data/lorem.txt.dfl"))
          (out (merge-pathnames "data/lorem.tmp.txt"))
@@ -187,6 +198,17 @@
        (with-open-file (s2 out :element-type 'octet :direction :output
                            :if-exists :supersede)
          (inflate-stream s1 s2)))
+     (ensure (binary-file= out test))
+     (delete-file out)))
+
+(addtest (deoxybyte-gzip-tests) inflate-stream/2
+   (let ((in (merge-pathnames "data/lorem.gz"))
+         (out (merge-pathnames "data/lorem.tmp.gz"))
+         (test (merge-pathnames "data/lorem.txt")))
+     (with-open-file (s1 in :element-type 'octet)
+       (with-open-file (s2 out :element-type 'octet :direction :output
+                           :if-exists :supersede)
+         (inflate-stream s1 s2 :gzip-format t)))
      (ensure (binary-file= out test))
      (delete-file out)))
 

@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2009-2012 Keith James. All rights reserved.
+;;; Copyright (c) 2009-2013 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-gzip.
 ;;;
@@ -26,11 +26,13 @@
 (defsystem deoxybyte-gzip
     :name "deoxybyte-gzip"
     :author "Keith James"
-    :version "0.5.1"
+    :version "0.6.0"
     :licence "GPL v3"
-    :in-order-to ((test-op (load-op :deoxybyte-gzip :deoxybyte-gzip-test)))
-    :depends-on ((:version :deoxybyte-io "0.9.0")
-                 (:version :deoxybyte-unix "0.7.2"))
+    :in-order-to ((test-op (load-op :deoxybyte-gzip :deoxybyte-gzip-test))
+                  (doc-op (load-op :deoxybyte-gzip :cldoc)))
+    :depends-on ((:version :deoxybyte-systems "1.0.0")
+                 (:version :deoxybyte-io "0.15.0")
+                 (:version :deoxybyte-unix "0.8.0"))
     :components ((:module :deoxybyte-gzip
                           :serial t
                           :pathname "src/"
@@ -42,10 +44,9 @@
                                        (:file "gzip-stream")
                                        (:file "line-stream")
                                        #+:sbcl (:file "sbcl")
-                                       #+:ccl (:file "ccl")))
-                 (:lift-test-config :lift-tests
-                                    :pathname "deoxybyte-gzip-test"
-                                    :target-system :deoxybyte-gzip)
-                 (:cldoc-config :cldoc-documentation
-                                :pathname "doc/html/"
-                                :target-system :deoxybyte-gzip)))
+                                       #+:ccl (:file "ccl"))))
+    :perform (test-op :after (op c)
+                      (maybe-run-lift-tests :deoxybyte-gzip
+                                            "deoxybyte-gzip-test.config"))
+    :perform (doc-op :after (op c)
+                     (maybe-build-cldoc-docs :deoxybyte-gzip "doc/html")))
