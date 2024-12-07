@@ -227,3 +227,12 @@
                                         :initial-element 0))
       (ensure (equalp in vec))
       (ensure (equalp 1024 count)))))
+
+(addtest (deoxybyte-gzip-tests) read-sequence-interface
+  ;; read-sequence must return the location of the next byte that
+  ;; would be written to
+  (let ((in (merge-pathnames "data/lorem.gz")))
+    (deoxybyte-gzip:with-open-gzip (s in :direction :input)
+      (let ((temp (make-array 8192 :element-type 'octet)))
+	(ensure (= (read-sequence temp s :start 0 :end 1) 1))
+	(ensure (= (read-sequence temp s :start 1 :end 2) 2))))))
