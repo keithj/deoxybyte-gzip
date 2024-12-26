@@ -144,7 +144,7 @@ Returns:
                                             gz buffer (min
                                                        num-to-write
                                                        +octet-buffer-size+)))))
-                     finally (return num-written)))))
+                     finally (return seq-offset)))))
     (let ((end (or end (length seq)))
           (gz (slot-value stream 'gz)) 
           (buffer (slot-value stream 'buffer))) ; CCL 1.4 with-slots bug?
